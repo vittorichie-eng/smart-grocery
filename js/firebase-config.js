@@ -143,7 +143,7 @@ class FirebaseSyncManager {
   }
 
   /**
-   * Listen to remote cloud changes and sync to local state
+   * Listen to remote cloud changes and sync to local state in real-time
    */
   setupRealtimeListener() {
     const docRef = this.getDocRef();
@@ -154,10 +154,15 @@ class FirebaseSyncManager {
     }
 
     this.unsubscribeListener = docRef.onSnapshot(
+      { includeMetadataChanges: true },
       (snapshot) => {
         if (snapshot.exists) {
+          // If this snapshot has pending local writes from this device, skip to avoid double rendering
+          if (snapshot.metadata && snapshot.metadata.hasPendingWrites) {
+            return;
+          }
           const data = snapshot.data();
-          if (data && !this.isSyncing) {
+          if (data) {
             this.applyCloudDataToLocal(data);
           }
         } else {
@@ -179,26 +184,37 @@ class FirebaseSyncManager {
   }
 
   /**
-   * Apply cloud data into local storage and trigger UI re-render
+   * Apply cloud data into local storage and trigger instant UI re-render
    */
   applyCloudDataToLocal(cloudData) {
     if (!cloudData || !window.db) return;
     let hasChanges = false;
 
-    if (cloudData.trolley && Array.isArray(cloudData.trolley)) {
-      localStorage.setItem(window.db.getStorageKey('trolley'), JSON.stringify(cloudData.trolley));
+    const currentTrolley = localStorage.getItem(window.db.getStorageKey('trolley'));
+    const newTrolleyStr = JSON.stringify(cloudData.trolley || []);
+    if (cloudData.trolley && currentTrolley !== newTrolleyStr) {
+      localStorage.setItem(window.db.getStorageKey('trolley'), newTrolleyStr);
       hasChanges = true;
     }
-    if (cloudData.config && typeof cloudData.config === 'object') {
-      localStorage.setItem(window.db.getStorageKey('config'), JSON.stringify(cloudData.config));
+
+    const currentConfig = localStorage.getItem(window.db.getStorageKey('config'));
+    const newConfigStr = JSON.stringify(cloudData.config || {});
+    if (cloudData.config && currentConfig !== newConfigStr) {
+      localStorage.setItem(window.db.getStorageKey('config'), newConfigStr);
       hasChanges = true;
     }
-    if (cloudData.history && Array.isArray(cloudData.history)) {
-      localStorage.setItem(window.db.getStorageKey('history'), JSON.stringify(cloudData.history));
+
+    const currentHistory = localStorage.getItem(window.db.getStorageKey('history'));
+    const newHistoryStr = JSON.stringify(cloudData.history || []);
+    if (cloudData.history && currentHistory !== newHistoryStr) {
+      localStorage.setItem(window.db.getStorageKey('history'), newHistoryStr);
       hasChanges = true;
     }
-    if (cloudData.catalog && Array.isArray(cloudData.catalog)) {
-      localStorage.setItem(window.db.getStorageKey('catalog'), JSON.stringify(cloudData.catalog));
+
+    const currentCatalog = localStorage.getItem(window.db.getStorageKey('catalog'));
+    const newCatalogStr = JSON.stringify(cloudData.catalog || []);
+    if (cloudData.catalog && currentCatalog !== newCatalogStr) {
+      localStorage.setItem(window.db.getStorageKey('catalog'), newCatalogStr);
       hasChanges = true;
     }
 
@@ -237,7 +253,7 @@ class FirebaseSyncManager {
 
       this.status = 'connected';
       this.notifyStatusChange();
-      console.log('[Firebase] User data pushed to Firestore successfully!');
+      console.log('[Firebase] Real-time sync pushed to Firestore!');
       return true;
     } catch (err) {
       console.error('[Firebase] Failed to push local data to Firestore:', err);
@@ -250,15 +266,20 @@ class FirebaseSyncManager {
   }
 
   /**
-   * Quick debounce trigger to sync changes when local data changes
+   * Instant trigger or ultra-fast debounce to sync changes to cloud
    */
-  queueSync() {
+  queueSync(immediate = true) {
     if (!this.isConfigured() || !this.firestore) return;
     if (this._debounceTimer) clearTimeout(this._debounceTimer);
 
+    if (immediate) {
+      this.pushCurrentLocalToCloud();
+      return;
+    }
+
     this._debounceTimer = setTimeout(() => {
       this.pushCurrentLocalToCloud();
-    }, 1200);
+    }, 80);
   }
 }
 

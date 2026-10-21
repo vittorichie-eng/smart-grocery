@@ -950,7 +950,8 @@ function setupFirebaseSync() {
   // Listen to remote changes from cloud
   window.addEventListener('smart_grocery_data_updated', (e) => {
     renderActiveView(currentTab);
-    showToast('Data otomatis diperbarui dari Cloud Firestore! ☁️');
+    updateHeaderBudgetGauge();
+    showToast('Troli otomatis ter-update secara realtime! ⚡');
   });
 
   // Initialize Firebase
