@@ -382,6 +382,11 @@ function openAddItemModal() {
   document.getElementById('buyXGetYGroup').classList.add('hidden');
   document.getElementById('priceComparisonHint').innerHTML = '';
 
+  const suggestionsBox = document.getElementById('itemNameSuggestions');
+  if (suggestionsBox) suggestionsBox.classList.add('hidden');
+  const marketPriceLabel = document.getElementById('marketPriceLabel');
+  if (marketPriceLabel) marketPriceLabel.textContent = '';
+
   const modal = document.getElementById('itemModal');
   modal.classList.add('active');
 }
@@ -476,11 +481,99 @@ function saveItemFromForm() {
 function setupItemNameAutocomplete() {
   const nameInput = document.getElementById('itemNameInput');
   const priceInput = document.getElementById('itemPriceInput');
+  const categoryInput = document.getElementById('itemCategoryInput');
+  const unitInput = document.getElementById('itemUnitInput');
+  const suggestionsBox = document.getElementById('itemNameSuggestions');
+  const marketPriceLabel = document.getElementById('marketPriceLabel');
   if (!nameInput) return;
+
+  function renderSuggestions(query) {
+    if (!suggestionsBox) return;
+    const catalog = window.db ? window.db.getCatalog() : [];
+    if (!query || query.length === 0) {
+      suggestionsBox.innerHTML = '';
+      suggestionsBox.classList.add('hidden');
+      return;
+    }
+
+    const matches = catalog.filter(c => 
+      c.name.toLowerCase().includes(query.toLowerCase())
+    );
+
+    if (matches.length === 0) {
+      suggestionsBox.innerHTML = '';
+      suggestionsBox.classList.add('hidden');
+      return;
+    }
+
+    suggestionsBox.innerHTML = `
+      <div class="autocomplete-header">
+        <span>💡 Rekomendasi Acuan Pasar (${matches.length})</span>
+        <span style="font-size:0.62rem; color:#34d399;">Klik untuk auto-fill harga</span>
+      </div>
+      ${matches.slice(0, 6).map(item => `
+        <div class="autocomplete-item" data-name="${escapeHtml(item.name)}" data-price="${item.lastPrice || 0}" data-category="${escapeHtml(item.category || 'Bahan Pokok')}" data-unit="${escapeHtml(item.unit || 'pcs')}">
+          <div>
+            <div class="autocomplete-item-name">${escapeHtml(item.name)}</div>
+            <div class="autocomplete-item-meta">${escapeHtml(item.category || 'Bahan Pokok')} • Satuan: ${escapeHtml(item.unit || 'pcs')}</div>
+          </div>
+          <div class="autocomplete-item-price">
+            <span style="font-size:0.65rem; color:var(--text-sub); display:block; font-weight:normal;">Harga Pasar:</span>
+            Rp ${formatNumber(item.lastPrice)}
+          </div>
+        </div>
+      `).join('')}
+    `;
+    suggestionsBox.classList.remove('hidden');
+
+    // Bind click events on suggestions
+    suggestionsBox.querySelectorAll('.autocomplete-item').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const selectedName = el.getAttribute('data-name');
+        const selectedPrice = parseFloat(el.getAttribute('data-price')) || 0;
+        const selectedCategory = el.getAttribute('data-category');
+        const selectedUnit = el.getAttribute('data-unit');
+
+        nameInput.value = selectedName;
+        if (priceInput) priceInput.value = selectedPrice;
+        if (categoryInput && selectedCategory) categoryInput.value = selectedCategory;
+
+        // Try matching unit in dropdown
+        if (unitInput && selectedUnit) {
+          const matchingOption = Array.from(unitInput.options).find(opt => 
+            selectedUnit.toLowerCase().includes(opt.value.toLowerCase()) || 
+            opt.value.toLowerCase().includes(selectedUnit.toLowerCase())
+          );
+          if (matchingOption) unitInput.value = matchingOption.value;
+        }
+
+        if (marketPriceLabel) {
+          marketPriceLabel.textContent = `Acuan Pasar: Rp ${formatNumber(selectedPrice)}`;
+        }
+
+        checkPriceComparisonHint(selectedName, selectedPrice, selectedUnit);
+        suggestionsBox.classList.add('hidden');
+      });
+    });
+  }
 
   nameInput.addEventListener('input', () => {
     const val = nameInput.value.trim();
-    checkPriceComparisonHint(val, priceInput.value, 'pcs');
+    renderSuggestions(val);
+    checkPriceComparisonHint(val, priceInput ? priceInput.value : 0, 'pcs');
+  });
+
+  nameInput.addEventListener('focus', () => {
+    const val = nameInput.value.trim();
+    if (val) renderSuggestions(val);
+  });
+
+  // Close suggestions if clicked outside
+  document.addEventListener('click', (e) => {
+    if (suggestionsBox && !nameInput.contains(e.target) && !suggestionsBox.contains(e.target)) {
+      suggestionsBox.classList.add('hidden');
+    }
   });
 
   if (priceInput) {

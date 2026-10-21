@@ -300,10 +300,11 @@
       </div>
 
       <form id="itemForm">
-        <!-- Item Name -->
-        <div class="form-group">
+        <!-- Item Name with Autocomplete Dropdown -->
+        <div class="form-group" style="position:relative;">
           <label class="form-label">Nama Barang / Produk *</label>
-          <input type="text" id="itemNameInput" class="input-large" placeholder="Contoh: Beras Ramos 5kg / Minyak Goreng" required autocomplete="off">
+          <input type="text" id="itemNameInput" class="input-large" placeholder="Ketik nama produk (misal: Beras / Minyak)" required autocomplete="off">
+          <div id="itemNameSuggestions" class="autocomplete-suggestions hidden"></div>
           <div id="priceComparisonHint" style="font-size:0.72rem; margin-top:4px;"></div>
         </div>
 
@@ -336,7 +337,10 @@
         <!-- Price & Quantity Grid -->
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;" class="form-group">
           <div>
-            <label class="form-label">Harga Satuan (Rp) *</label>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <label class="form-label">Harga Satuan (Rp) *</label>
+              <span id="marketPriceLabel" style="font-size:0.68rem; color:#34d399; font-weight:700;"></span>
+            </div>
             <input type="number" id="itemPriceInput" class="input-large" placeholder="0" required>
           </div>
 
