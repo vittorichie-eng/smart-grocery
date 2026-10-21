@@ -310,10 +310,12 @@ class StorageManager {
   getCatalog() {
     this.initForUser(this.getCurrentUserId());
     try {
-      return JSON.parse(localStorage.getItem(this.getStorageKey('catalog'))) || [];
-    } catch (e) {
-      return [];
-    }
+      const stored = JSON.parse(localStorage.getItem(this.getStorageKey('catalog')));
+      if (Array.isArray(stored) && stored.length > 0) {
+        return stored;
+      }
+    } catch (e) {}
+    return window.PAST_CATALOG || [];
   }
 
   getHistory() {

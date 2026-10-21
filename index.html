@@ -300,10 +300,11 @@
       </div>
 
       <form id="itemForm">
-        <!-- Item Name with Autocomplete Dropdown -->
+        <!-- Item Name with Autocomplete Dropdown & Native Datalist -->
         <div class="form-group" style="position:relative;">
           <label class="form-label">Nama Barang / Produk *</label>
-          <input type="text" id="itemNameInput" class="input-large" placeholder="Ketik nama produk (misal: Beras / Minyak)" required autocomplete="off">
+          <input type="text" id="itemNameInput" list="catalogDatalist" class="input-large" placeholder="Ketik nama produk (misal: Beras / Minyak)" required autocomplete="off">
+          <datalist id="catalogDatalist"></datalist>
           <div id="itemNameSuggestions" class="autocomplete-suggestions hidden"></div>
           <div id="priceComparisonHint" style="font-size:0.72rem; margin-top:4px;"></div>
         </div>

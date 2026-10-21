@@ -485,11 +485,42 @@ function setupItemNameAutocomplete() {
   const unitInput = document.getElementById('itemUnitInput');
   const suggestionsBox = document.getElementById('itemNameSuggestions');
   const marketPriceLabel = document.getElementById('marketPriceLabel');
+  const datalist = document.getElementById('catalogDatalist');
   if (!nameInput) return;
+
+  function populateDatalist() {
+    if (!datalist) return;
+    const catalog = window.db ? window.db.getCatalog() : (window.PAST_CATALOG || []);
+    datalist.innerHTML = catalog.map(c => 
+      `<option value="${escapeHtml(c.name)}">Acuan Pasar: Rp ${formatNumber(c.lastPrice)} (${escapeHtml(c.category)})</option>`
+    ).join('');
+  }
+  populateDatalist();
+
+  function selectItem(item) {
+    nameInput.value = item.name;
+    if (priceInput) priceInput.value = item.lastPrice || item.price || 0;
+    if (categoryInput && item.category) categoryInput.value = item.category;
+
+    if (unitInput && item.unit) {
+      const matchingOption = Array.from(unitInput.options).find(opt => 
+        item.unit.toLowerCase().includes(opt.value.toLowerCase()) || 
+        opt.value.toLowerCase().includes(item.unit.toLowerCase())
+      );
+      if (matchingOption) unitInput.value = matchingOption.value;
+    }
+
+    if (marketPriceLabel) {
+      marketPriceLabel.textContent = `Acuan Pasar: Rp ${formatNumber(item.lastPrice || item.price || 0)}`;
+    }
+
+    checkPriceComparisonHint(item.name, item.lastPrice || item.price || 0, item.unit);
+    if (suggestionsBox) suggestionsBox.classList.add('hidden');
+  }
 
   function renderSuggestions(query) {
     if (!suggestionsBox) return;
-    const catalog = window.db ? window.db.getCatalog() : [];
+    const catalog = window.db ? window.db.getCatalog() : (window.PAST_CATALOG || []);
     if (!query || query.length === 0) {
       suggestionsBox.innerHTML = '';
       suggestionsBox.classList.add('hidden');
@@ -526,7 +557,6 @@ function setupItemNameAutocomplete() {
     `;
     suggestionsBox.classList.remove('hidden');
 
-    // Bind click events on suggestions
     suggestionsBox.querySelectorAll('.autocomplete-item').forEach(el => {
       el.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -534,42 +564,39 @@ function setupItemNameAutocomplete() {
         const selectedPrice = parseFloat(el.getAttribute('data-price')) || 0;
         const selectedCategory = el.getAttribute('data-category');
         const selectedUnit = el.getAttribute('data-unit');
-
-        nameInput.value = selectedName;
-        if (priceInput) priceInput.value = selectedPrice;
-        if (categoryInput && selectedCategory) categoryInput.value = selectedCategory;
-
-        // Try matching unit in dropdown
-        if (unitInput && selectedUnit) {
-          const matchingOption = Array.from(unitInput.options).find(opt => 
-            selectedUnit.toLowerCase().includes(opt.value.toLowerCase()) || 
-            opt.value.toLowerCase().includes(selectedUnit.toLowerCase())
-          );
-          if (matchingOption) unitInput.value = matchingOption.value;
-        }
-
-        if (marketPriceLabel) {
-          marketPriceLabel.textContent = `Acuan Pasar: Rp ${formatNumber(selectedPrice)}`;
-        }
-
-        checkPriceComparisonHint(selectedName, selectedPrice, selectedUnit);
-        suggestionsBox.classList.add('hidden');
+        selectItem({ name: selectedName, lastPrice: selectedPrice, category: selectedCategory, unit: selectedUnit });
       });
     });
   }
 
   nameInput.addEventListener('input', () => {
     const val = nameInput.value.trim();
+    // Check if user selected from native datalist
+    const catalog = window.db ? window.db.getCatalog() : (window.PAST_CATALOG || []);
+    const exactMatch = catalog.find(c => c.name.toLowerCase() === val.toLowerCase());
+    if (exactMatch) {
+      selectItem(exactMatch);
+      return;
+    }
     renderSuggestions(val);
     checkPriceComparisonHint(val, priceInput ? priceInput.value : 0, 'pcs');
   });
 
+  nameInput.addEventListener('change', () => {
+    const val = nameInput.value.trim();
+    const catalog = window.db ? window.db.getCatalog() : (window.PAST_CATALOG || []);
+    const exactMatch = catalog.find(c => c.name.toLowerCase() === val.toLowerCase());
+    if (exactMatch) {
+      selectItem(exactMatch);
+    }
+  });
+
   nameInput.addEventListener('focus', () => {
+    populateDatalist();
     const val = nameInput.value.trim();
     if (val) renderSuggestions(val);
   });
 
-  // Close suggestions if clicked outside
   document.addEventListener('click', (e) => {
     if (suggestionsBox && !nameInput.contains(e.target) && !suggestionsBox.contains(e.target)) {
       suggestionsBox.classList.add('hidden');
@@ -760,21 +787,42 @@ function openReceiptModal(historyId) {
 }
 
 function finishShoppingSession() {
-  const summary = window.db.getTrolleySummary();
-  const items = window.db.getTrolley();
-  const config = window.db.getConfig();
-
-  if (items.length === 0) {
+  const allItems = window.db.getTrolley();
+  if (allItems.length === 0) {
     showToast('Troli belanjaanmu masih kosong!');
     return;
   }
 
+  // Filter items that are checked (inCart: true)
+  let checkoutItems = allItems.filter(i => i.inCart);
+  
+  // If user hasn't checked any specific item, check out all items
+  if (checkoutItems.length === 0) {
+    checkoutItems = allItems;
+  }
+
+  const config = window.db.getConfig();
+
+  let grossTotal = 0;
+  let totalSavings = 0;
+  checkoutItems.forEach(item => {
+    const baseTotal = (parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 1);
+    const finalTotal = window.db.calculateItemFinalPrice(item);
+    grossTotal += finalTotal;
+    totalSavings += Math.max(0, baseTotal - finalTotal);
+  });
+
+  const ppnAmount = Math.round((grossTotal * (config.ppnRate || 0)) / 100);
+  const bagFee = config.bagFee || 0;
+  const grandTotal = grossTotal + ppnAmount + (checkoutItems.length > 0 ? bagFee : 0);
+
   const sessionData = {
     storeName: config.currentStore || 'Super Indo',
-    totalSpent: summary.grandTotal,
-    budgetLimit: summary.budgetLimit,
-    itemCount: summary.itemCount,
-    items: items.map(i => ({
+    totalSpent: grandTotal,
+    totalSavings: totalSavings,
+    budgetLimit: config.monthlyBudget || 750000,
+    itemCount: checkoutItems.length,
+    items: checkoutItems.map(i => ({
       name: i.name,
       qty: i.quantity,
       price: i.price,
@@ -788,14 +836,15 @@ function finishShoppingSession() {
   window.db.saveSessionToHistory(sessionData);
 
   // Trigger celebration confetti animation
-  if (window.confetti && !summary.isOverBudget) {
+  if (window.confetti && grandTotal <= (config.monthlyBudget || 750000)) {
     window.confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 } });
   }
 
-  // Clear trolley cart
-  window.db.clearTrolley();
+  // Remove ONLY the checked-out items from the active trolley!
+  const remainingItems = allItems.filter(i => !checkoutItems.includes(i));
+  window.db.saveTrolley(remainingItems);
 
-  showToast('Belanjaan selesai disimpan ke Riwayat!');
+  showToast(`${checkoutItems.length} item berhasil dicheckout ke Struk Riwayat!`);
   renderActiveView('history');
 }
 
