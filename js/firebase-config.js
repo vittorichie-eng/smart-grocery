@@ -13,12 +13,12 @@
  */
 
 const DEFAULT_FIREBASE_CONFIG = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyBuW1ILJ5j3071Mis79KImtKzgW3nczFaw",
+  authDomain: "smart-grocery-5ad5b.firebaseapp.com",
+  projectId: "smart-grocery-5ad5b",
+  storageBucket: "smart-grocery-5ad5b.firebasestorage.app",
+  messagingSenderId: "367020688680",
+  appId: "1:367020688680:web:88675cc620d70750d8bc1d"
 };
 
 const FIREBASE_STORAGE_KEY = 'smart_grocery_firebase_config';
