@@ -3,10 +3,10 @@
  */
 
 const STORAGE_KEYS = {
-  CONFIG: 'smart_grocery_config',
-  TROLLEY: 'smart_grocery_trolley',
-  HISTORY: 'smart_grocery_history',
-  CATALOG: 'smart_grocery_catalog'
+  CONFIG: 'config',
+  TROLLEY: 'trolley',
+  HISTORY: 'history',
+  CATALOG: 'catalog'
 };
 
 class StorageManager {
@@ -14,29 +14,112 @@ class StorageManager {
     this.init();
   }
 
+  getCurrentUserId() {
+    const user = window.auth ? window.auth.getCurrentUser() : null;
+    return user ? user.id : 'user-default';
+  }
+
+  getStorageKey(keyType) {
+    const uid = this.getCurrentUserId();
+    return `smart_grocery_${uid}_${keyType.toLowerCase()}`;
+  }
+
+  initForUser(userId) {
+    const configKey = `smart_grocery_${userId}_config`;
+    const trolleyKey = `smart_grocery_${userId}_trolley`;
+    const historyKey = `smart_grocery_${userId}_history`;
+    const catalogKey = `smart_grocery_${userId}_catalog`;
+
+    // Load or initialize user config
+    if (!localStorage.getItem(configKey)) {
+      const user = window.auth ? window.auth.getCurrentUser() : null;
+      const initialConfig = {
+        ...window.DEFAULT_CONFIG,
+        monthlyBudget: user?.monthlyBudget || window.DEFAULT_CONFIG.monthlyBudget,
+        currentStore: user?.store || window.DEFAULT_CONFIG.currentStore
+      };
+      localStorage.setItem(configKey, JSON.stringify(initialConfig));
+    }
+
+    // Load or initialize user trolley
+    if (!localStorage.getItem(trolleyKey)) {
+      if (userId === 'user-siti-02') {
+        const sitiItems = [
+          {
+            id: 'item-siti-1',
+            name: 'Susu UHT Diamond 1L',
+            category: 'Minuman & Nutrisi',
+            price: 19500,
+            quantity: 2,
+            unit: 'L',
+            priority: 'Wajib',
+            inCart: true,
+            discountType: 'none',
+            discountVal: 0,
+            note: 'Stok sarapan'
+          },
+          {
+            id: 'item-siti-2',
+            name: 'Roti Gandum Sari Roti',
+            category: 'Makanan Quick',
+            price: 21000,
+            quantity: 1,
+            unit: 'pack',
+            priority: 'Wajib',
+            inCart: true,
+            discountType: 'none',
+            discountVal: 0,
+            note: 'Sarapan sehat'
+          },
+          {
+            id: 'item-siti-3',
+            name: 'Kopi Kenangan Ready to Drink',
+            category: 'Cemilan (Keinginan)',
+            price: 11000,
+            quantity: 3,
+            unit: 'botol',
+            priority: 'Keinginan',
+            inCart: false,
+            discountType: 'buy_x_get_y',
+            buyX: 2,
+            getY: 1,
+            discountVal: 0,
+            note: 'Promo beli 2 gratis 1'
+          }
+        ];
+        localStorage.setItem(trolleyKey, JSON.stringify(sitiItems));
+      } else if (userId === 'user-budi-01') {
+        const legacyCart = localStorage.getItem('smart_grocery_trolley');
+        const items = legacyCart ? JSON.parse(legacyCart) : window.DEFAULT_TROLLEY_ITEMS;
+        localStorage.setItem(trolleyKey, JSON.stringify(items));
+      } else {
+        localStorage.setItem(trolleyKey, JSON.stringify([]));
+      }
+    }
+
+    if (!localStorage.getItem(historyKey)) {
+      localStorage.setItem(historyKey, JSON.stringify(window.DEFAULT_HISTORY || []));
+    }
+    if (!localStorage.getItem(catalogKey)) {
+      localStorage.setItem(catalogKey, JSON.stringify(window.PAST_CATALOG || []));
+    }
+  }
+
   init() {
-    // Load config or set default
-    if (!localStorage.getItem(STORAGE_KEYS.CONFIG)) {
-      localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(window.DEFAULT_CONFIG));
-    }
-    // Load trolley or set default
-    if (!localStorage.getItem(STORAGE_KEYS.TROLLEY)) {
-      localStorage.setItem(STORAGE_KEYS.TROLLEY, JSON.stringify(window.DEFAULT_TROLLEY_ITEMS));
-    }
-    // Load history or set default
-    if (!localStorage.getItem(STORAGE_KEYS.HISTORY)) {
-      localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(window.DEFAULT_HISTORY));
-    }
-    // Load past catalog or set default
-    if (!localStorage.getItem(STORAGE_KEYS.CATALOG)) {
-      localStorage.setItem(STORAGE_KEYS.CATALOG, JSON.stringify(window.PAST_CATALOG));
+    this.initForUser(this.getCurrentUserId());
+  }
+
+  triggerCloudSync() {
+    if (window.firebaseSync && typeof window.firebaseSync.queueSync === 'function') {
+      window.firebaseSync.queueSync();
     }
   }
 
   // --- CONFIG METHODS ---
   getConfig() {
+    this.initForUser(this.getCurrentUserId());
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEYS.CONFIG)) || window.DEFAULT_CONFIG;
+      return JSON.parse(localStorage.getItem(this.getStorageKey('config'))) || window.DEFAULT_CONFIG;
     } catch (e) {
       return window.DEFAULT_CONFIG;
     }
@@ -45,21 +128,24 @@ class StorageManager {
   saveConfig(newConfig) {
     const current = this.getConfig();
     const updated = { ...current, ...newConfig };
-    localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(updated));
+    localStorage.setItem(this.getStorageKey('config'), JSON.stringify(updated));
+    this.triggerCloudSync();
     return updated;
   }
 
   // --- TROLLEY METHODS ---
   getTrolley() {
+    this.initForUser(this.getCurrentUserId());
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEYS.TROLLEY)) || [];
+      return JSON.parse(localStorage.getItem(this.getStorageKey('trolley'))) || [];
     } catch (e) {
       return [];
     }
   }
 
   saveTrolley(items) {
-    localStorage.setItem(STORAGE_KEYS.TROLLEY, JSON.stringify(items));
+    localStorage.setItem(this.getStorageKey('trolley'), JSON.stringify(items));
+    this.triggerCloudSync();
   }
 
   addItem(item) {
@@ -222,16 +308,18 @@ class StorageManager {
 
   // --- CATALOG & HISTORY METHODS ---
   getCatalog() {
+    this.initForUser(this.getCurrentUserId());
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEYS.CATALOG)) || [];
+      return JSON.parse(localStorage.getItem(this.getStorageKey('catalog'))) || [];
     } catch (e) {
       return [];
     }
   }
 
   getHistory() {
+    this.initForUser(this.getCurrentUserId());
     try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEYS.HISTORY)) || [];
+      return JSON.parse(localStorage.getItem(this.getStorageKey('history'))) || [];
     } catch (e) {
       return [];
     }
@@ -249,7 +337,7 @@ class StorageManager {
       }),
       ...sessionData
     });
-    localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(history));
+    localStorage.setItem(this.getStorageKey('history'), JSON.stringify(history));
 
     // Also update catalog with new item prices!
     const catalog = this.getCatalog();
@@ -266,14 +354,16 @@ class StorageManager {
         });
       }
     });
-    localStorage.setItem(STORAGE_KEYS.CATALOG, JSON.stringify(catalog));
+    localStorage.setItem(this.getStorageKey('catalog'), JSON.stringify(catalog));
+    this.triggerCloudSync();
   }
 
   resetAllData() {
-    localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(window.DEFAULT_CONFIG));
-    localStorage.setItem(STORAGE_KEYS.TROLLEY, JSON.stringify(window.DEFAULT_TROLLEY_ITEMS));
-    localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(window.DEFAULT_HISTORY));
-    localStorage.setItem(STORAGE_KEYS.CATALOG, JSON.stringify(window.PAST_CATALOG));
+    localStorage.setItem(this.getStorageKey('config'), JSON.stringify(window.DEFAULT_CONFIG));
+    localStorage.setItem(this.getStorageKey('trolley'), JSON.stringify(window.DEFAULT_TROLLEY_ITEMS));
+    localStorage.setItem(this.getStorageKey('history'), JSON.stringify(window.DEFAULT_HISTORY));
+    localStorage.setItem(this.getStorageKey('catalog'), JSON.stringify(window.PAST_CATALOG));
+    this.triggerCloudSync();
   }
 }
 

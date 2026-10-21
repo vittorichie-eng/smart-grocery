@@ -27,6 +27,12 @@ function initApp() {
 
   // Check for PWA install button status
   setupPWAEvents();
+
+  // Setup Firebase Cloud Firestore Sync (Single User)
+  setupFirebaseSync();
+
+  // Setup Multi-User Authentication System
+  setupAuthSystem();
 }
 
 /* -------------------------------------------------------------------------- */
@@ -838,6 +844,170 @@ function setupPWAEvents() {
   // Configured in pwa.js
 }
 
+/* -------------------------------------------------------------------------- */
+/* FIREBASE FIRESTORE SYNC & MODAL LOGIC (SINGLE ACCESS USER)                 */
+/* -------------------------------------------------------------------------- */
+function setupFirebaseSync() {
+  if (!window.firebaseSync) return;
+
+  window.firebaseSync.onStatusChange((status) => {
+    updateFirebaseStatusUI(status);
+  });
+
+  // Listen to remote changes from cloud
+  window.addEventListener('smart_grocery_data_updated', (e) => {
+    renderActiveView(currentTab);
+    showToast('Data otomatis diperbarui dari Cloud Firestore! ☁️');
+  });
+
+  // Initialize Firebase
+  window.firebaseSync.init();
+}
+
+function updateFirebaseStatusUI(status) {
+  const badge = document.getElementById('firebaseSyncBadge');
+  const badgeText = document.getElementById('firebaseSyncStatusText');
+  const pill = document.getElementById('firebaseStatusPill');
+
+  const statusMap = {
+    connected: {
+      badgeClass: 'status-connected',
+      badgeText: 'Cloud Sync',
+      pillClass: 'status-connected',
+      pillText: '🟢 Cloud Aktif'
+    },
+    syncing: {
+      badgeClass: 'status-syncing',
+      badgeText: 'Menyimpan...',
+      pillClass: 'status-syncing',
+      pillText: '🔵 Menyinkronkan...'
+    },
+    unconfigured: {
+      badgeClass: 'status-unconfigured',
+      badgeText: 'Setup Firebase',
+      pillClass: 'status-unconfigured',
+      pillText: '🟡 Belum Terhubung'
+    },
+    offline: {
+      badgeClass: 'status-offline',
+      badgeText: 'Offline',
+      pillClass: 'status-offline',
+      pillText: '⚪ Mode Offline'
+    },
+    error: {
+      badgeClass: 'status-error',
+      badgeText: 'Firebase Error',
+      pillClass: 'status-error',
+      pillText: '🔴 Gagal Terhubung'
+    }
+  };
+
+  const current = statusMap[status] || statusMap.unconfigured;
+
+  if (badge) {
+    badge.className = `firebase-sync-badge ${current.badgeClass}`;
+  }
+  if (badgeText) {
+    badgeText.textContent = current.badgeText;
+  }
+  if (pill) {
+    pill.className = `cloud-status-pill ${current.pillClass}`;
+    pill.textContent = current.pillText;
+  }
+
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+}
+
+function openFirebaseConfigModal() {
+  const modal = document.getElementById('firebaseConfigModal');
+  if (!modal) return;
+
+  if (window.firebaseSync) {
+    const config = window.firebaseSync.getConfig();
+    const isDefault = !window.firebaseSync.isConfigured();
+
+    const apiKeyEl = document.getElementById('fbApiKeyInput');
+    const projIdEl = document.getElementById('fbProjectIdInput');
+    const authDomEl = document.getElementById('fbAuthDomainInput');
+    const storageEl = document.getElementById('fbStorageBucketInput');
+    const senderEl = document.getElementById('fbSenderIdInput');
+    const appIdEl = document.getElementById('fbAppIdInput');
+
+    if (apiKeyEl) apiKeyEl.value = isDefault && config.apiKey === 'YOUR_API_KEY' ? '' : (config.apiKey || '');
+    if (projIdEl) projIdEl.value = isDefault && config.projectId === 'YOUR_PROJECT_ID' ? '' : (config.projectId || '');
+    if (authDomEl) authDomEl.value = isDefault && (config.authDomain || '').includes('YOUR_PROJECT_ID') ? '' : (config.authDomain || '');
+    if (storageEl) storageEl.value = isDefault && (config.storageBucket || '').includes('YOUR_PROJECT_ID') ? '' : (config.storageBucket || '');
+    if (senderEl) senderEl.value = isDefault && config.messagingSenderId === 'YOUR_SENDER_ID' ? '' : (config.messagingSenderId || '');
+    if (appIdEl) appIdEl.value = isDefault && config.appId === 'YOUR_APP_ID' ? '' : (config.appId || '');
+  }
+
+  modal.classList.add('active');
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+}
+
+function closeFirebaseConfigModal() {
+  const modal = document.getElementById('firebaseConfigModal');
+  if (modal) modal.classList.remove('active');
+}
+
+function handleSaveFirebaseConfig(e) {
+  if (e) e.preventDefault();
+  const apiKey = (document.getElementById('fbApiKeyInput').value || '').trim();
+  const projectId = (document.getElementById('fbProjectIdInput').value || '').trim();
+  const authDomain = (document.getElementById('fbAuthDomainInput').value || '').trim() || `${projectId}.firebaseapp.com`;
+  const storageBucket = (document.getElementById('fbStorageBucketInput').value || '').trim() || `${projectId}.appspot.com`;
+  const messagingSenderId = (document.getElementById('fbSenderIdInput').value || '').trim();
+  const appId = (document.getElementById('fbAppIdInput').value || '').trim();
+
+  if (!apiKey || !projectId) {
+    alert('API Key dan Project ID wajib diisi!');
+    return;
+  }
+
+  if (window.firebaseSync) {
+    window.firebaseSync.saveConfig({
+      apiKey,
+      projectId,
+      authDomain,
+      storageBucket,
+      messagingSenderId,
+      appId
+    });
+    closeFirebaseConfigModal();
+    showToast('Menyimpan & menghubungkan ke Firebase Firestore...');
+  }
+}
+
+function handleResetFirebaseConfig() {
+  if (confirm('Reset kredensial Firebase ke placeholder default?')) {
+    if (window.firebaseSync) {
+      window.firebaseSync.clearConfig();
+    }
+    closeFirebaseConfigModal();
+    showToast('Kredensial Firebase direset.');
+  }
+}
+
+async function manualTriggerCloudSync() {
+  if (!window.firebaseSync || !window.firebaseSync.isConfigured()) {
+    showToast('Silakan atur kredensial Firebase terlebih dahulu.');
+    openFirebaseConfigModal();
+    return;
+  }
+
+  showToast('Menyinkronkan data ke Cloud Firestore... ☁️');
+  const success = await window.firebaseSync.pushCurrentLocalToCloud();
+  if (success) {
+    showToast('Berhasil disinkronkan ke Cloud Firestore! ☁️');
+  } else {
+    showToast('Gagal menyinkronkan data. Cek koneksi atau izin database.');
+  }
+}
+
 // Global scope bindings for inline HTML handlers
 window.toggleCartStatus = toggleCartStatus;
 window.updateItemQuantity = updateItemQuantity;
@@ -845,3 +1015,241 @@ window.openEditItemModal = openEditItemModal;
 window.openReceiptModal = openReceiptModal;
 window.saveMonthlyBudgetSetting = saveMonthlyBudgetSetting;
 window.closeModal = closeModal;
+window.openFirebaseConfigModal = openFirebaseConfigModal;
+window.closeFirebaseConfigModal = closeFirebaseConfigModal;
+window.handleSaveFirebaseConfig = handleSaveFirebaseConfig;
+window.handleResetFirebaseConfig = handleResetFirebaseConfig;
+window.manualTriggerCloudSync = manualTriggerCloudSync;
+
+/* -------------------------------------------------------------------------- */
+/* MULTI-USER AUTHENTICATION & ACCOUNT SWITCHER LOGIC                         */
+/* -------------------------------------------------------------------------- */
+function setupAuthSystem() {
+  if (!window.auth) return;
+
+  window.auth.onAuthChange((user) => {
+    updateUserProfileUI(user);
+    if (user) {
+      // Re-render current active view to reflect this user's data
+      renderActiveView(currentTab);
+      // Re-bind Firestore realtime listener for this user
+      if (window.firebaseSync && window.firebaseSync.isConfigured()) {
+        window.firebaseSync.setupRealtimeListener();
+      }
+    } else {
+      openAuthModal('login');
+    }
+  });
+}
+
+function updateUserProfileUI(user) {
+  const avatarEl = document.getElementById('userAvatarText');
+  const nameEl = document.getElementById('userNameText');
+  if (user) {
+    if (avatarEl) avatarEl.textContent = user.avatar || '👤';
+    if (nameEl) nameEl.textContent = (user.name || 'User').split(' ')[0];
+  } else {
+    if (avatarEl) avatarEl.textContent = '👤';
+    if (nameEl) nameEl.textContent = 'Masuk';
+  }
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function openAccountModal() {
+  const user = window.auth ? window.auth.getCurrentUser() : null;
+  if (!user) {
+    openAuthModal('login');
+    return;
+  }
+
+  const modal = document.getElementById('accountModal');
+  if (!modal) return;
+
+  const avatarBig = document.getElementById('accAvatarBig');
+  const nameBig = document.getElementById('accNameBig');
+  const emailText = document.getElementById('accEmailText');
+  const roleText = document.getElementById('accRoleText');
+  const storeText = document.getElementById('accStoreText');
+
+  if (avatarBig) avatarBig.textContent = user.avatar || '👤';
+  if (nameBig) nameBig.textContent = user.name || 'Pengguna';
+  if (emailText) emailText.textContent = user.email || '-';
+  if (roleText) roleText.textContent = user.role || 'Member';
+  if (storeText) storeText.textContent = `• ${user.store || 'Super Indo'}`;
+
+  // Render list of registered users for switching
+  renderRegisteredUsersList();
+
+  modal.classList.add('active');
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function closeAccountModal() {
+  const modal = document.getElementById('accountModal');
+  if (modal) modal.classList.remove('active');
+}
+
+function renderRegisteredUsersList() {
+  const container = document.getElementById('registeredUsersList');
+  if (!container || !window.auth) return;
+
+  const users = window.auth.getRegisteredUsers();
+  const currentUser = window.auth.getCurrentUser();
+
+  container.innerHTML = users.map(u => {
+    const isActive = currentUser && currentUser.id === u.id;
+    return `
+      <div class="user-switch-item ${isActive ? 'active' : ''}" onclick="switchAccount('${escapeHtml(u.id)}')">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-size:1.3rem;">${u.avatar || '👤'}</span>
+          <div>
+            <div style="font-weight:700; font-size:0.82rem; color:var(--text-main);">${escapeHtml(u.name)}</div>
+            <div style="font-size:0.7rem; color:var(--text-sub);">${escapeHtml(u.email)}</div>
+          </div>
+        </div>
+        ${isActive 
+          ? `<span style="font-size:0.7rem; color:var(--primary-emerald); font-weight:700;">✓ Aktif</span>` 
+          : `<span style="font-size:0.7rem; color:var(--text-sub);">Pilih</span>`
+        }
+      </div>
+    `;
+  }).join('');
+}
+
+function openAuthModal(initialTab = 'login') {
+  const modal = document.getElementById('authModal');
+  if (!modal) return;
+
+  switchAuthTab(initialTab);
+  hideAuthError();
+  modal.classList.add('active');
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function closeAuthModal() {
+  const modal = document.getElementById('authModal');
+  if (modal) modal.classList.remove('active');
+}
+
+function switchAuthTab(tab) {
+  const tabBtnLogin = document.getElementById('tabBtnLogin');
+  const tabBtnReg = document.getElementById('tabBtnRegister');
+  const loginForm = document.getElementById('loginForm');
+  const regForm = document.getElementById('registerForm');
+  const title = document.getElementById('authModalTitle');
+
+  hideAuthError();
+
+  if (tab === 'register') {
+    if (tabBtnLogin) tabBtnLogin.classList.remove('active');
+    if (tabBtnReg) tabBtnReg.classList.add('active');
+    if (loginForm) loginForm.classList.add('hidden');
+    if (regForm) regForm.classList.remove('hidden');
+    if (title) title.textContent = 'Daftar Akun Baru';
+  } else {
+    if (tabBtnLogin) tabBtnLogin.classList.add('active');
+    if (tabBtnReg) tabBtnReg.classList.remove('active');
+    if (loginForm) loginForm.classList.remove('hidden');
+    if (regForm) regForm.classList.add('hidden');
+    if (title) title.textContent = 'Masuk ke Smart Grocery';
+  }
+
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function showAuthError(msg) {
+  const alertBox = document.getElementById('authErrorAlert');
+  if (alertBox) {
+    alertBox.textContent = msg;
+    alertBox.classList.remove('hidden');
+  }
+}
+
+function hideAuthError() {
+  const alertBox = document.getElementById('authErrorAlert');
+  if (alertBox) {
+    alertBox.textContent = '';
+    alertBox.classList.add('hidden');
+  }
+}
+
+async function handleLoginFormSubmit(e) {
+  if (e) e.preventDefault();
+  hideAuthError();
+
+  const email = (document.getElementById('loginEmailInput').value || '').trim();
+  const password = (document.getElementById('loginPasswordInput').value || '').trim();
+
+  try {
+    const user = await window.auth.login({ email, password });
+    closeAuthModal();
+    showToast(`Selamat datang kembali, ${user.name}! 👋`);
+  } catch (err) {
+    showAuthError(err.message || 'Gagal masuk. Periksa kembali email dan password.');
+  }
+}
+
+async function handleRegisterFormSubmit(e) {
+  if (e) e.preventDefault();
+  hideAuthError();
+
+  const name = (document.getElementById('regNameInput').value || '').trim();
+  const email = (document.getElementById('regEmailInput').value || '').trim();
+  const password = (document.getElementById('regPasswordInput').value || '').trim();
+  const monthlyBudget = parseFloat(document.getElementById('regBudgetInput').value) || 750000;
+  const store = (document.getElementById('regStoreInput').value || '').trim() || 'Super Indo';
+
+  try {
+    const newUser = await window.auth.register({
+      name,
+      email,
+      password,
+      monthlyBudget,
+      store
+    });
+    closeAuthModal();
+    showToast(`Akun ${newUser.name} berhasil dibuat! 🎉`);
+  } catch (err) {
+    showAuthError(err.message || 'Gagal membuat akun. Silakan coba lagi.');
+  }
+}
+
+function quickDemoLogin(demoId) {
+  hideAuthError();
+  const user = window.auth.loginDemo(demoId);
+  if (user) {
+    closeAuthModal();
+    closeAccountModal();
+    showToast(`Beralih ke akun demo: ${user.name} (${user.role}) ✨`);
+  }
+}
+
+function switchAccount(userId) {
+  const user = window.auth.switchUser(userId);
+  if (user) {
+    closeAccountModal();
+    showToast(`Beralih ke akun: ${user.name} 👋`);
+  }
+}
+
+async function handleUserLogout() {
+  if (confirm('Apakah Anda yakin ingin keluar dari akun ini?')) {
+    await window.auth.logout();
+    closeAccountModal();
+    openAuthModal('login');
+    showToast('Anda telah keluar dari akun.');
+  }
+}
+
+// Global scope bindings for Auth modal handlers
+window.openAccountModal = openAccountModal;
+window.closeAccountModal = closeAccountModal;
+window.openAuthModal = openAuthModal;
+window.closeAuthModal = closeAuthModal;
+window.switchAuthTab = switchAuthTab;
+window.handleLoginFormSubmit = handleLoginFormSubmit;
+window.handleRegisterFormSubmit = handleRegisterFormSubmit;
+window.quickDemoLogin = quickDemoLogin;
+window.switchAccount = switchAccount;
+window.handleUserLogout = handleUserLogout;
+

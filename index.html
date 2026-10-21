@@ -28,6 +28,11 @@
   <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+
+  <!-- Firebase Compat Web SDK (v10) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -48,9 +53,22 @@
         </div>
 
         <div class="header-actions">
+          <!-- User Account Badge -->
+          <div id="userProfileBadge" class="user-profile-badge" title="Kelola Akun Pengguna" onclick="openAccountModal()">
+            <span id="userAvatarText" class="user-avatar-icon">👨‍🎓</span>
+            <span id="userNameText" class="user-name-label">Budi</span>
+            <i data-lucide="chevron-down" style="width:12px; height:12px; opacity:0.7;"></i>
+          </div>
+
           <div id="storeBadge" class="store-selector-badge">
-            <i data-lucide="map-pin" style="width:14px; height:14px; color:#10b981;"></i>
+            <i data-lucide="map-pin" style="width:13px; height:13px; color:#10b981;"></i>
             <span id="storeBadgeText">Super Indo</span>
+          </div>
+
+          <!-- Firebase Cloud Sync Status Badge -->
+          <div id="firebaseSyncBadge" class="firebase-sync-badge status-unconfigured" title="Klik untuk Pengaturan Firebase" onclick="openFirebaseConfigModal()">
+            <i data-lucide="cloud" style="width:13px; height:13px;"></i>
+            <span id="firebaseSyncStatusText">Firebase</span>
           </div>
 
           <button id="pwaInstallBtn" class="icon-btn-ghost" style="display:none; color:#10b981;" title="Pasang PWA ke HP">
@@ -196,6 +214,31 @@
         <div style="margin-bottom:16px;">
           <h2 style="font-size:1.1rem; font-weight:800; margin-bottom:4px;">📊 Pengaturan Anggaran & Analisis</h2>
           <p style="font-size:0.78rem; color:var(--text-sub);">Atur batas Safety Cap & pantau histori harga acuan</p>
+        </div>
+
+        <!-- Firebase Firestore Cloud Sync Card (Single User) -->
+        <div class="firebase-panel-card" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:16px; padding:14px; margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+            <div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:1.1rem;">🔥</span>
+                <h3 style="font-size:0.95rem; font-weight:700;">Cloud Firestore Sync</h3>
+              </div>
+              <p style="font-size:0.75rem; color:var(--text-sub); margin-top:2px;">Single Access User • Sinkronisasi Troli & Anggaran ke Cloud</p>
+            </div>
+            <span id="firebaseStatusPill" class="cloud-status-pill status-unconfigured">Belum Terhubung</span>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px;">
+            <button class="btn-secondary" style="font-size:0.78rem; padding:8px 10px;" onclick="openFirebaseConfigModal()">
+              <i data-lucide="settings" style="width:14px; height:14px;"></i>
+              Atur Kredensial
+            </button>
+            <button id="manualSyncBtn" class="btn-primary" style="font-size:0.78rem; padding:8px 10px;" onclick="manualTriggerCloudSync()">
+              <i data-lucide="refresh-cw" style="width:14px; height:14px;"></i>
+              Sinkronkan Sekarang
+            </button>
+          </div>
         </div>
 
         <!-- Budget Setting Form Card -->
@@ -403,8 +446,212 @@
     </div>
   </div>
 
+  <!-- MODAL: FIREBASE CONFIGURATION (SINGLE ACCESS USER) -->
+  <div id="firebaseConfigModal" class="modal-overlay">
+    <div class="bottom-sheet" style="max-height:88vh;">
+      <div class="sheet-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:1.2rem;">🔥</span>
+          <h3 class="sheet-title">Pengaturan Firebase Firestore</h3>
+        </div>
+        <button class="icon-btn-ghost" style="border:none;" onclick="closeFirebaseConfigModal()">
+          <i data-lucide="x" style="width:20px; height:20px;"></i>
+        </button>
+      </div>
+
+      <div style="padding:4px 0 16px;">
+        <div style="background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3); border-radius:12px; padding:10px 12px; margin-bottom:14px; font-size:0.75rem; color:#6ee7b7; line-height:1.4;">
+          <strong>Mode Single Access:</strong> Seluruh data troli, belanjaan, dan histori Anda disimpan di dokumen khusus <code>single_user_data/active_grocery</code> secara otomatis.
+        </div>
+
+        <form id="firebaseConfigForm" onsubmit="handleSaveFirebaseConfig(event)">
+          <div class="form-group">
+            <label class="form-label">API Key (apiKey) *</label>
+            <input type="text" id="fbApiKeyInput" class="input-large" placeholder="AIzaSy..." required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Project ID (projectId) *</label>
+            <input type="text" id="fbProjectIdInput" class="input-large" placeholder="smart-grocery-xxxxx" required>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;" class="form-group">
+            <div>
+              <label class="form-label">Auth Domain</label>
+              <input type="text" id="fbAuthDomainInput" class="input-large" placeholder="project-id.firebaseapp.com">
+            </div>
+            <div>
+              <label class="form-label">Storage Bucket</label>
+              <input type="text" id="fbStorageBucketInput" class="input-large" placeholder="project-id.appspot.com">
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;" class="form-group">
+            <div>
+              <label class="form-label">Messaging Sender ID</label>
+              <input type="text" id="fbSenderIdInput" class="input-large" placeholder="1234567890">
+            </div>
+            <div>
+              <label class="form-label">App ID</label>
+              <input type="text" id="fbAppIdInput" class="input-large" placeholder="1:123456:web:abcd...">
+            </div>
+          </div>
+
+          <div style="display:flex; gap:10px; margin-top:14px;">
+            <button type="button" class="btn-secondary" style="flex:1;" onclick="handleResetFirebaseConfig()">
+              Reset Placeholder
+            </button>
+            <button type="submit" class="btn-primary" style="flex:2;">
+              <i data-lucide="check" style="width:16px; height:16px;"></i>
+              Simpan & Hubungkan
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: MULTI-USER LOGIN & REGISTER -->
+  <div id="authModal" class="modal-overlay">
+    <div class="bottom-sheet" style="max-height:92vh;">
+      <div class="sheet-header">
+        <div>
+          <h3 id="authModalTitle" class="sheet-title">Masuk ke Smart Grocery</h3>
+          <p style="font-size:0.72rem; color:var(--text-sub); margin-top:2px;">Tersedia penyimpanan data terpisah untuk setiap akun</p>
+        </div>
+        <button class="icon-btn-ghost" style="border:none;" onclick="closeAuthModal()">
+          <i data-lucide="x" style="width:20px; height:20px;"></i>
+        </button>
+      </div>
+
+      <!-- Quick Demo Accounts -->
+      <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:14px; padding:12px; margin-bottom:14px;">
+        <div style="font-size:0.72rem; font-weight:700; color:var(--text-sub); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">⚡ Akses Cepat Akun Demo:</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <button type="button" class="btn-demo-account" onclick="quickDemoLogin('user-budi-01')">
+            <span style="font-size:1.2rem;">👨‍🎓</span>
+            <div style="text-align:left;">
+              <div style="font-weight:700; font-size:0.78rem; color:var(--text-main);">Budi Santoso</div>
+              <div style="font-size:0.68rem; color:var(--text-sub);">Budget Rp 750rb</div>
+            </div>
+          </button>
+          <button type="button" class="btn-demo-account" onclick="quickDemoLogin('user-siti-02')">
+            <span style="font-size:1.2rem;">👩‍💼</span>
+            <div style="text-align:left;">
+              <div style="font-weight:700; font-size:0.78rem; color:var(--text-main);">Siti Rahma</div>
+              <div style="font-size:0.68rem; color:var(--text-sub);">Budget Rp 1,5jt</div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabs: Masuk / Daftar -->
+      <div class="auth-tabs-row">
+        <button id="tabBtnLogin" class="auth-tab-btn active" onclick="switchAuthTab('login')">Masuk (Login)</button>
+        <button id="tabBtnRegister" class="auth-tab-btn" onclick="switchAuthTab('register')">Daftar Akun Baru</button>
+      </div>
+
+      <!-- Error Message Box -->
+      <div id="authErrorAlert" class="hidden" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); border-radius:10px; padding:8px 12px; margin-bottom:12px; font-size:0.75rem; color:#f87171;"></div>
+
+      <!-- FORM: LOGIN -->
+      <form id="loginForm" onsubmit="handleLoginFormSubmit(event)">
+        <div class="form-group">
+          <label class="form-label">Email Akun *</label>
+          <input type="email" id="loginEmailInput" class="input-large" placeholder="contoh: budi@smartgrocery.id" required autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Kata Sandi (Password) *</label>
+          <input type="password" id="loginPasswordInput" class="input-large" placeholder="Minimal 6 karakter" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn-primary" style="width:100%; padding:14px; margin-top:8px;">
+          <i data-lucide="log-in" style="width:16px; height:16px;"></i>
+          Masuk ke Akun
+        </button>
+      </form>
+
+      <!-- FORM: REGISTER -->
+      <form id="registerForm" class="hidden" onsubmit="handleRegisterFormSubmit(event)">
+        <div class="form-group">
+          <label class="form-label">Nama Lengkap / Panggilan *</label>
+          <input type="text" id="regNameInput" class="input-large" placeholder="Contoh: Rian Mahasiswa" required autocomplete="name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email *</label>
+          <input type="email" id="regEmailInput" class="input-large" placeholder="Contoh: rian@email.com" required autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Kata Sandi (Password) *</label>
+          <input type="password" id="regPasswordInput" class="input-large" placeholder="Minimal 6 karakter" required autocomplete="new-password">
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;" class="form-group">
+          <div>
+            <label class="form-label">Target Anggaran (Rp)</label>
+            <input type="number" id="regBudgetInput" class="input-large" value="800000">
+          </div>
+          <div>
+            <label class="form-label">Supermarket Favorit</label>
+            <input type="text" id="regStoreInput" class="input-large" value="Super Indo">
+          </div>
+        </div>
+        <button type="submit" class="btn-primary" style="width:100%; padding:14px; margin-top:8px;">
+          <i data-lucide="user-plus" style="width:16px; height:16px;"></i>
+          Buat Akun & Mulai Belanja
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: USER ACCOUNT MANAGEMENT -->
+  <div id="accountModal" class="modal-overlay">
+    <div class="bottom-sheet" style="max-height:85vh;">
+      <div class="sheet-header">
+        <h3 class="sheet-title">Profil & Ganti Akun</h3>
+        <button class="icon-btn-ghost" style="border:none;" onclick="closeAccountModal()">
+          <i data-lucide="x" style="width:20px; height:20px;"></i>
+        </button>
+      </div>
+
+      <!-- Active User Card -->
+      <div style="background:var(--bg-card); border:1px solid var(--border-highlight); border-radius:16px; padding:16px; margin-bottom:16px; display:flex; align-items:center; gap:14px;">
+        <div id="accAvatarBig" style="font-size:2.4rem; background:rgba(16,185,129,0.15); width:56px; height:56px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-full); border:1px solid rgba(16,185,129,0.3);">
+          👨‍🎓
+        </div>
+        <div style="flex:1;">
+          <div id="accNameBig" style="font-size:1.05rem; font-weight:800; color:var(--text-main);">Budi Santoso</div>
+          <div id="accEmailText" style="font-size:0.75rem; color:var(--text-sub); margin-top:2px;">budi@smartgrocery.id</div>
+          <div style="display:flex; align-items:center; gap:6px; margin-top:6px;">
+            <span id="accRoleText" class="badge-role">Mahasiswa Rantau</span>
+            <span id="accStoreText" style="font-size:0.7rem; color:var(--text-sub);">• Super Indo</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Switch Account Section -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:0.75rem; font-weight:700; color:var(--text-sub); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Ganti Pengguna di Perangkat Ini:</div>
+        <div id="registeredUsersList" class="registered-users-list">
+          <!-- Dynamic registered users list -->
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <button type="button" class="btn-secondary" onclick="openAuthModal('register')">
+          <i data-lucide="user-plus" style="width:14px; height:14px;"></i>
+          Tambah Akun
+        </button>
+        <button type="button" class="btn-secondary" style="color:#f87171; border-color:rgba(239,68,68,0.3);" onclick="handleUserLogout()">
+          <i data-lucide="log-out" style="width:14px; height:14px;"></i>
+          Keluar (Logout)
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Javascript Modules Loading Order -->
   <script src="js/sampleData.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/auth.js"></script>
   <script src="js/db.js"></script>
   <script src="js/comparator.js"></script>
   <script src="js/pwa.js"></script>
