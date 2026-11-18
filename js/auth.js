@@ -295,6 +295,85 @@ class AuthManager {
     this.setCurrentUser(null);
   }
 
+  /**
+   * Log in using Google / Gmail Account
+   */
+  async loginWithGoogle() {
+    // 1. Try Firebase Google Auth Provider if Firebase is configured
+    if (window.firebase && window.firebase.auth && window.firebaseSync && window.firebaseSync.isConfigured()) {
+      try {
+        const provider = new window.firebase.auth.GoogleAuthProvider();
+        const result = await window.firebase.auth().signInWithPopup(provider);
+        if (result && result.user) {
+          const fbUser = result.user;
+          const googleUser = {
+            id: fbUser.uid,
+            name: fbUser.displayName || fbUser.email.split('@')[0],
+            email: fbUser.email,
+            avatar: fbUser.photoURL || '🌐',
+            role: 'Google Account',
+            monthlyBudget: 750000,
+            store: 'Hari-Hari Pasar Swalayan',
+            isGoogleUser: true
+          };
+
+          // Save to registered users if not exists
+          const users = this.getRegisteredUsers();
+          const existingIdx = users.findIndex(u => u.email.toLowerCase() === googleUser.email.toLowerCase());
+          if (existingIdx !== -1) {
+            users[existingIdx] = { ...users[existingIdx], ...googleUser };
+          } else {
+            users.push(googleUser);
+          }
+          localStorage.setItem(AUTH_STORAGE_KEYS.ALL_USERS, JSON.stringify(users));
+
+          this.setCurrentUser(googleUser);
+          if (window.firebaseSync) window.firebaseSync.setupRealtimeListener();
+          return googleUser;
+        }
+      } catch (fbErr) {
+        console.warn('[Auth] Firebase Google login failed or popup closed, proceeding to Gmail prompt:', fbErr.message);
+      }
+    }
+
+    // 2. Direct Gmail Account Login / Connect Prompt
+    const enteredEmail = prompt('Masukkan Alamat Email Gmail Anda (@gmail.com):', 'user.grocery@gmail.com');
+    if (!enteredEmail || !enteredEmail.trim()) {
+      throw new Error('Login Gmail dibatalkan.');
+    }
+
+    const cleanEmail = enteredEmail.trim().toLowerCase();
+    const usernamePart = cleanEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, ' ');
+    const formattedName = usernamePart.charAt(0).toUpperCase() + usernamePart.slice(1);
+
+    const users = this.getRegisteredUsers();
+    let existingUser = users.find(u => u.email.toLowerCase() === cleanEmail);
+
+    if (!existingUser) {
+      existingUser = {
+        id: 'google-' + Date.now(),
+        name: formattedName || 'Pengguna Gmail',
+        email: cleanEmail,
+        avatar: '🔴', // Google icon placeholder
+        role: 'Gmail User',
+        monthlyBudget: 750000,
+        store: 'Hari-Hari Pasar Swalayan',
+        isGoogleUser: true,
+        createdAt: new Date().toISOString()
+      };
+      users.push(existingUser);
+      localStorage.setItem(AUTH_STORAGE_KEYS.ALL_USERS, JSON.stringify(users));
+    }
+
+    this.setCurrentUser(existingUser);
+
+    if (window.db) {
+      window.db.initForUser(existingUser.id);
+    }
+
+    return existingUser;
+  }
+
   generateAvatarEmoji(name) {
     const emojis = ['🧑‍🎓', '👩‍💻', '👨‍🍳', '🧑‍🎨', '👩‍🏫', '👨‍💼', '🧑‍🔬', '👧', '👦'];
     let hash = 0;

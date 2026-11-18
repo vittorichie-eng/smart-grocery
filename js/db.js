@@ -312,7 +312,11 @@ class StorageManager {
     try {
       const stored = JSON.parse(localStorage.getItem(this.getStorageKey('catalog')));
       if (Array.isArray(stored) && stored.length > 0) {
-        return stored;
+        // Merge with window.PAST_CATALOG so any new items in catalog are always included
+        const catalogMap = new Map();
+        (window.PAST_CATALOG || []).forEach(item => catalogMap.set(item.name.toLowerCase(), item));
+        stored.forEach(item => catalogMap.set(item.name.toLowerCase(), item));
+        return Array.from(catalogMap.values());
       }
     } catch (e) {}
     return window.PAST_CATALOG || [];

@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initApp() {
+  // Initialize Theme (Dark / Light)
+  initTheme();
+
   // Refresh Lucide Icons
   if (window.lucide) {
     window.lucide.createIcons();
@@ -383,12 +386,23 @@ function openAddItemModal() {
   document.getElementById('priceComparisonHint').innerHTML = '';
 
   const suggestionsBox = document.getElementById('itemNameSuggestions');
-  if (suggestionsBox) suggestionsBox.classList.add('hidden');
   const marketPriceLabel = document.getElementById('marketPriceLabel');
   if (marketPriceLabel) marketPriceLabel.textContent = '';
 
   const modal = document.getElementById('itemModal');
   modal.classList.add('active');
+
+  // Trigger suggestion list automatically on opening
+  setTimeout(() => {
+    const nameInput = document.getElementById('itemNameInput');
+    if (nameInput) {
+      nameInput.focus();
+      // Show recommendations right away so user sees available choices
+      if (typeof window.triggerCatalogSuggestions === 'function') {
+        window.triggerCatalogSuggestions();
+      }
+    }
+  }, 100);
 }
 
 function openEditItemModal(itemId) {
@@ -521,35 +535,44 @@ function setupItemNameAutocomplete() {
   function renderSuggestions(query) {
     if (!suggestionsBox) return;
     const catalog = window.db ? window.db.getCatalog() : (window.PAST_CATALOG || []);
-    if (!query || query.length === 0) {
-      suggestionsBox.innerHTML = '';
-      suggestionsBox.classList.add('hidden');
-      return;
+    
+    // If empty query, show top recommended popular items from catalog
+    let matches;
+    if (!query || query.trim().length === 0) {
+      matches = catalog.slice(0, 15);
+    } else {
+      matches = catalog.filter(c => 
+        c.name.toLowerCase().includes(query.toLowerCase()) ||
+        (c.category && c.category.toLowerCase().includes(query.toLowerCase()))
+      );
     }
 
-    const matches = catalog.filter(c => 
-      c.name.toLowerCase().includes(query.toLowerCase())
-    );
-
     if (matches.length === 0) {
-      suggestionsBox.innerHTML = '';
-      suggestionsBox.classList.add('hidden');
+      suggestionsBox.innerHTML = `
+        <div class="autocomplete-header">
+          <span>💡 Produk Baru</span>
+        </div>
+        <div style="padding:10px 14px; font-size:0.75rem; color:var(--text-sub);">
+          "${escapeHtml(query)}" belum ada di acuan. Anda bisa langsung menginput harganya.
+        </div>
+      `;
+      suggestionsBox.classList.remove('hidden');
       return;
     }
 
     suggestionsBox.innerHTML = `
       <div class="autocomplete-header">
-        <span>💡 Rekomendasi Acuan Pasar (${matches.length})</span>
-        <span style="font-size:0.62rem; color:#34d399;">Klik untuk auto-fill harga</span>
+        <span>💡 ${query ? 'Hasil Pencarian' : 'Pilihan Cepat Barang Populer'} (${matches.length})</span>
+        <span style="font-size:0.62rem; color:#34d399;">Klik untuk pilih</span>
       </div>
-      ${matches.slice(0, 6).map(item => `
+      ${matches.slice(0, 10).map(item => `
         <div class="autocomplete-item" data-name="${escapeHtml(item.name)}" data-price="${item.lastPrice || 0}" data-category="${escapeHtml(item.category || 'Bahan Pokok')}" data-unit="${escapeHtml(item.unit || 'pcs')}">
           <div>
             <div class="autocomplete-item-name">${escapeHtml(item.name)}</div>
             <div class="autocomplete-item-meta">${escapeHtml(item.category || 'Bahan Pokok')} • Satuan: ${escapeHtml(item.unit || 'pcs')}</div>
           </div>
           <div class="autocomplete-item-price">
-            <span style="font-size:0.65rem; color:var(--text-sub); display:block; font-weight:normal;">Harga Pasar:</span>
+            <span style="font-size:0.65rem; color:var(--text-sub); display:block; font-weight:normal;">Harga Acuan:</span>
             Rp ${formatNumber(item.lastPrice)}
           </div>
         </div>
@@ -568,6 +591,12 @@ function setupItemNameAutocomplete() {
       });
     });
   }
+
+  window.triggerCatalogSuggestions = function() {
+    populateDatalist();
+    const val = nameInput.value.trim();
+    renderSuggestions(val);
+  };
 
   nameInput.addEventListener('input', () => {
     const val = nameInput.value.trim();
@@ -593,8 +622,7 @@ function setupItemNameAutocomplete() {
 
   nameInput.addEventListener('focus', () => {
     populateDatalist();
-    const val = nameInput.value.trim();
-    if (val) renderSuggestions(val);
+    renderSuggestions(nameInput.value.trim());
   });
 
   document.addEventListener('click', (e) => {
@@ -931,11 +959,79 @@ function renderPriceTrackerTable() {
 }
 
 function openStoreSettingModal() {
+  openStoreModal();
+}
+
+function openStoreModal() {
+  const modal = document.getElementById('storeModal');
+  const container = document.getElementById('storeListContainer');
+  if (!modal || !container) return;
+
   const config = window.db.getConfig();
-  const newStore = prompt('Masukkan Nama Supermarket / Toko:', config.currentStore || 'Super Indo');
-  if (newStore) {
-    window.db.saveConfig({ currentStore: newStore });
-    updateHeaderBudgetGauge();
+  const currentStore = config.currentStore || 'Hari-Hari Pasar Swalayan';
+  const stores = window.STORE_LOCATIONS || [
+    { id: 'hari-hari', name: 'Hari-Hari Pasar Swalayan', address: 'Cabang Fatmawati / ITC', type: 'Supermarket Hemat' },
+    { id: 'hypermart', name: 'Hypermart', address: 'Mall Mega Megastore', type: 'Hypermarket Promo' },
+    { id: 'superindo', name: 'Super Indo', address: 'Cabang Depok - Margonda', type: 'Supermarket Segar' },
+    { id: 'grandlucky', name: 'Grand Lucky', address: 'Kawasan SCBD Sudirman', type: 'Premium Grocery' },
+    { id: 'lotte-mart', name: 'Lotte Mart', address: 'Grosir & Retail Kuningan', type: 'Grosir & Retail' },
+    { id: 'indomaret', name: 'Indomaret Fresh', address: 'Minimarket Dekat Kos', type: 'Minimarket' }
+  ];
+
+  container.innerHTML = stores.map(store => {
+    const isSelected = currentStore.toLowerCase().includes(store.name.toLowerCase()) || 
+                       store.name.toLowerCase().includes(currentStore.toLowerCase());
+    return `
+      <div class="store-option-card ${isSelected ? 'active' : ''}" onclick="selectStoreLocation('${escapeHtml(store.name)}')">
+        <div>
+          <div class="store-option-title">
+            <span>🛒</span> ${escapeHtml(store.name)}
+          </div>
+          <div class="store-option-desc">${escapeHtml(store.address)} • ${escapeHtml(store.type)}</div>
+        </div>
+        ${isSelected 
+          ? `<span style="color:#10b981; font-weight:800; font-size:0.8rem;">✓ Terpilih</span>`
+          : `<span style="color:var(--text-sub); font-size:0.75rem;">Pilih</span>`
+        }
+      </div>
+    `;
+  }).join('') + `
+    <div style="margin-top:8px;">
+      <button class="btn-secondary" style="width:100%; font-size:0.78rem; padding:10px;" onclick="customStorePrompt()">
+        ✏️ Ketik Nama Toko / Lokasi Lainnya...
+      </button>
+    </div>
+  `;
+
+  modal.classList.add('active');
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function closeStoreModal() {
+  const modal = document.getElementById('storeModal');
+  if (modal) modal.classList.remove('active');
+}
+
+function selectStoreLocation(storeName) {
+  window.db.saveConfig({ currentStore: storeName });
+  
+  // Also update user's profile store
+  const user = window.auth ? window.auth.getCurrentUser() : null;
+  if (user) {
+    user.store = storeName;
+    window.auth.setCurrentUser(user);
+  }
+
+  updateHeaderBudgetGauge();
+  closeStoreModal();
+  showToast(`Lokasi supermarket diubah ke: ${storeName} 📍`);
+}
+
+function customStorePrompt() {
+  const config = window.db.getConfig();
+  const input = prompt('Ketik Nama Supermarket / Lokasi Toko Baru:', config.currentStore || '');
+  if (input && input.trim()) {
+    selectStoreLocation(input.trim());
   }
 }
 
@@ -1384,6 +1480,158 @@ async function handleUserLogout() {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* GMAIL LOGIN HANDLER                                                        */
+/* -------------------------------------------------------------------------- */
+async function handleGoogleLogin() {
+  hideAuthError();
+  try {
+    const user = await window.auth.loginWithGoogle();
+    if (user) {
+      closeAuthModal();
+      closeAccountModal();
+      showToast(`Login berhasil! Selamat datang, ${user.name} 🌟`);
+    }
+  } catch (err) {
+    if (err.message && err.message.includes('dibatalkan')) {
+      showToast('Login Gmail dibatalkan.');
+    } else {
+      showAuthError(err.message || 'Gagal login dengan akun Gmail.');
+    }
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* PAST CHECKOUT ITEMS SELECTOR                                               */
+/* -------------------------------------------------------------------------- */
+function openPastItemsModal() {
+  const modal = document.getElementById('pastItemsModal');
+  const container = document.getElementById('pastItemsListContainer');
+  if (!modal || !container) return;
+
+  const history = window.db ? window.db.getHistory() : [];
+  const currentCart = window.db ? window.db.getTrolley() : [];
+
+  // Extract all unique items from history
+  const pastItemsMap = new Map();
+  history.forEach(session => {
+    (session.items || []).forEach(item => {
+      const key = item.name.toLowerCase().trim();
+      if (!pastItemsMap.has(key)) {
+        pastItemsMap.set(key, {
+          name: item.name,
+          price: item.price,
+          unit: item.unit || 'pcs',
+          category: item.category || 'Bahan Pokok',
+          priority: item.priority || 'Wajib',
+          lastBoughtDate: session.displayDate || session.date
+        });
+      }
+    });
+  });
+
+  const uniquePastItems = Array.from(pastItemsMap.values());
+
+  if (uniquePastItems.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center; padding:30px 10px; color:var(--text-sub);">
+        <i data-lucide="shopping-bag" style="width:36px; height:36px; margin-bottom:8px; opacity:0.5;"></i>
+        <p style="font-weight:700; color:var(--text-main); font-size:0.9rem;">Belum ada riwayat checkout sebelumnya</p>
+        <p style="font-size:0.75rem; margin-top:4px;">Setelah Anda menyelesaikan belanja dan menyimpan struk, barang-barang tersebut akan muncul di sini untuk memudahkan belanja ulang.</p>
+      </div>
+    `;
+  } else {
+    container.innerHTML = `
+      <div style="font-size:0.75rem; color:var(--text-sub); margin-bottom:10px;">
+        Pilih item yang ingin Anda masukkan kembali ke troli belanja aktif:
+      </div>
+      ${uniquePastItems.map(item => {
+        const inCartAlready = currentCart.some(c => c.name.toLowerCase() === item.name.toLowerCase());
+        return `
+          <div class="past-item-card">
+            <div>
+              <div style="font-weight:700; font-size:0.85rem; color:var(--text-main);">${escapeHtml(item.name)}</div>
+              <div style="font-size:0.72rem; color:var(--text-sub); margin-top:2px;">
+                ${escapeHtml(item.category)} • Terakhir: Rp ${formatNumber(item.price)} / ${escapeHtml(item.unit)}
+              </div>
+            </div>
+            <div>
+              <button class="btn-primary" style="padding:6px 12px; font-size:0.75rem;" onclick="addPastItemToCart('${escapeHtml(item.name)}', ${item.price}, '${escapeHtml(item.unit)}', '${escapeHtml(item.category)}', '${escapeHtml(item.priority)}')">
+                <i data-lucide="plus" style="width:14px; height:14px;"></i>
+                ${inCartAlready ? '+ Tambah Lagi' : 'Beli Lagi'}
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    `;
+  }
+
+  modal.classList.add('active');
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function closePastItemsModal() {
+  const modal = document.getElementById('pastItemsModal');
+  if (modal) modal.classList.remove('active');
+}
+
+function addPastItemToCart(name, price, unit, category, priority) {
+  window.db.addItem({
+    name: name,
+    price: parseFloat(price) || 0,
+    quantity: 1,
+    unit: unit || 'pcs',
+    category: category || 'Bahan Pokok',
+    priority: priority || 'Wajib',
+    discountType: 'none',
+    discountVal: 0
+  });
+
+  renderTrolleyView();
+  updateHeaderBudgetGauge();
+  showToast(`"${name}" ditambahkan ke troli belanja! 🛒`);
+}
+
+/* -------------------------------------------------------------------------- */
+/* THEME MANAGEMENT (LIGHT & DARK MODE)                                       */
+/* -------------------------------------------------------------------------- */
+const THEME_STORAGE_KEY = 'smart_grocery_theme_mode';
+
+function initTheme() {
+  const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'dark';
+  applyTheme(savedTheme);
+}
+
+function applyTheme(theme) {
+  const icon = document.getElementById('themeToggleIcon');
+  if (theme === 'light') {
+    document.body.classList.add('light-theme');
+    if (icon) {
+      icon.setAttribute('data-lucide', 'moon');
+      icon.style.color = '#3b82f6';
+    }
+  } else {
+    document.body.classList.remove('light-theme');
+    if (icon) {
+      icon.setAttribute('data-lucide', 'sun');
+      icon.style.color = '#fbbf24';
+    }
+  }
+  localStorage.setItem(THEME_STORAGE_KEY, theme);
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function toggleThemeMode() {
+  const isLight = document.body.classList.contains('light-theme');
+  const newTheme = isLight ? 'dark' : 'light';
+  applyTheme(newTheme);
+  showToast(newTheme === 'light' ? 'Beralih ke Mode Terang ☀️' : 'Beralih ke Mode Gelap 🌙');
+}
+
+window.toggleThemeMode = toggleThemeMode;
+window.applyTheme = applyTheme;
+
 // Global scope bindings for Auth modal handlers
 window.openAccountModal = openAccountModal;
 window.closeAccountModal = closeAccountModal;
@@ -1395,4 +1643,13 @@ window.handleRegisterFormSubmit = handleRegisterFormSubmit;
 window.quickDemoLogin = quickDemoLogin;
 window.switchAccount = switchAccount;
 window.handleUserLogout = handleUserLogout;
+window.handleGoogleLogin = handleGoogleLogin;
+window.openStoreModal = openStoreModal;
+window.closeStoreModal = closeStoreModal;
+window.selectStoreLocation = selectStoreLocation;
+window.customStorePrompt = customStorePrompt;
+window.openPastItemsModal = openPastItemsModal;
+window.closePastItemsModal = closePastItemsModal;
+window.addPastItemToCart = addPastItemToCart;
+
 

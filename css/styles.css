@@ -36,6 +36,150 @@
   --shadow-glow: 0 0 20px var(--primary-glow);
 }
 
+/* Light Mode Overrides */
+body.light-theme {
+  --bg-dark: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f1f5f9;
+  --bg-glass: rgba(255, 255, 255, 0.88);
+
+  --text-main: #0f172a;
+  --text-sub: #475569;
+  --text-muted: #94a3b8;
+
+  --border-color: rgba(0, 0, 0, 0.08);
+  --border-highlight: rgba(16, 185, 129, 0.5);
+
+  --shadow-main: 0 10px 30px -5px rgba(0, 0, 0, 0.1);
+  background: radial-gradient(circle at 50% 20%, #e2e8f0 0%, #cbd5e1 100%);
+}
+
+body.light-theme .app-wrapper {
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.2), 0 0 0 10px #e2e8f0, 0 0 0 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+body.light-theme .app-wrapper::before {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+body.light-theme .budget-safety-card {
+  background: rgba(241, 245, 249, 0.85);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .progress-track {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .item-card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.07);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+body.light-theme .item-card:hover {
+  background: #f8fafc;
+}
+
+body.light-theme .item-card.in-cart {
+  background: rgba(16, 185, 129, 0.04);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+body.light-theme .chip-btn {
+  background: #f1f5f9;
+  color: #475569;
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .chip-btn.active {
+  background: var(--primary-emerald);
+  color: #ffffff;
+}
+
+body.light-theme .input-large {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+body.light-theme .input-large:focus {
+  background: #ffffff;
+  border-color: var(--primary-emerald);
+}
+
+body.light-theme .autocomplete-suggestions {
+  background: #ffffff;
+  border-color: var(--primary-emerald);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+body.light-theme .autocomplete-header {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+body.light-theme .autocomplete-item {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+body.light-theme .autocomplete-item:hover {
+  background: rgba(16, 185, 129, 0.08);
+}
+
+body.light-theme .sticky-trolley-summary {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .bottom-sheet {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .store-option-card {
+  background: #f8fafc;
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .store-option-card:hover {
+  background: rgba(16, 185, 129, 0.06);
+}
+
+body.light-theme .past-item-card {
+  background: #f8fafc;
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .user-switch-item {
+  background: #f8fafc;
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .icon-btn-ghost {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #0f172a;
+}
+
+body.light-theme .store-selector-badge {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #0f172a;
+}
+
+body.light-theme .btn-secondary {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+body.light-theme .btn-secondary:hover {
+  background: #e2e8f0;
+}
+
 /* Reset & Base Setup */
 * {
   margin: 0;
@@ -47,31 +191,48 @@
 }
 
 body {
-  background-color: #0f172a;
+  background: radial-gradient(circle at 50% 20%, #1e293b 0%, #090d16 100%);
   color: var(--text-main);
   display: flex;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;
   min-height: 100vh;
   min-height: 100dvh;
-  padding: 0;
+  padding: 24px 16px;
   overflow-x: hidden;
 }
 
-/* Screen Wrapper - Frameless & Fully Responsive Layout */
+/* Screen Wrapper - Realistic Smartphone Frame on Desktop & Fullscreen on Mobile */
 .app-wrapper {
   width: 100%;
-  max-width: 640px;
-  min-height: 100vh;
-  min-height: 100dvh;
+  max-width: 430px;
+  height: 90vh;
+  height: 90dvh;
+  max-height: 890px;
   background-color: var(--bg-dark);
   position: relative;
   display: flex;
   flex-direction: column;
-  box-shadow: none;
-  border: none;
-  border-radius: 0;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 0 10px #1e293b, 0 0 0 12px rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 44px;
   margin: 0 auto;
+  overflow: hidden;
+}
+
+/* Smartphone Speaker / Dynamic Island Top Indicator */
+.app-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 99px;
+  z-index: 100;
+  pointer-events: none;
 }
 
 /* Top App Bar Header */
@@ -455,12 +616,12 @@ body {
 
 /* Bottom Navigation Bar */
 .bottom-nav {
-  position: fixed;
+  position: absolute;
   bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
   width: 100%;
-  max-width: 640px;
+  max-width: 100%;
   height: 72px;
   background: var(--bg-glass);
   backdrop-filter: blur(16px);
@@ -800,7 +961,7 @@ body {
 
 /* Modals & Slide-up Bottom Sheets */
 .modal-overlay {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   right: 0;
@@ -812,6 +973,8 @@ body {
   align-items: flex-end;
   justify-content: center;
   animation: fadeIn 0.2s ease-out;
+  border-radius: 44px;
+  overflow: hidden;
 }
 
 .modal-overlay.active {
@@ -821,7 +984,7 @@ body {
 .bottom-sheet {
   background: var(--bg-card);
   width: 100%;
-  max-width: 640px;
+  max-width: 100%;
   max-height: 85vh;
   border-radius: 24px 24px 0 0;
   border: 1px solid var(--border-color);
@@ -1025,3 +1188,143 @@ body {
 .hidden {
   display: none !important;
 }
+
+/* Gmail Login Button & Auth Divider */
+.btn-gmail-login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  background: #ffffff;
+  color: #1f2937;
+  border: 1px solid #e5e7eb;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-size: 0.86rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn-gmail-login:hover {
+  background: #f9fafb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.btn-gmail-login:active {
+  transform: scale(0.98);
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 14px 0 6px;
+  color: var(--text-sub);
+  font-size: 0.7rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.auth-divider span {
+  padding: 0 10px;
+}
+
+/* Store Selector Grid & Modal Items */
+.store-grid-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.store-option-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.store-option-card:hover {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.store-option-card.active {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: var(--primary-emerald);
+}
+
+.store-option-title {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.store-option-desc {
+  font-size: 0.72rem;
+  color: var(--text-sub);
+  margin-top: 3px;
+}
+
+.past-item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  transition: all 0.2s;
+}
+
+.past-item-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Responsive Media Queries: Native Smartphone Viewport */
+@media (max-width: 480px) {
+  body {
+    padding: 0;
+    align-items: flex-start;
+    background: var(--bg-dark);
+  }
+
+  .app-wrapper {
+    max-width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+  }
+
+  .app-wrapper::before {
+    display: none;
+  }
+
+  .modal-overlay {
+    border-radius: 0;
+  }
+}
+
+

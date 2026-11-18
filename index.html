@@ -65,6 +65,11 @@
             <span id="storeBadgeText">Super Indo</span>
           </div>
 
+          <!-- Theme Toggle Button (Light / Dark Mode) -->
+          <button id="themeToggleBtn" class="icon-btn-ghost" title="Ganti Mode Terang / Gelap" onclick="toggleThemeMode()" style="width:32px; height:32px;">
+            <i id="themeToggleIcon" data-lucide="sun" style="width:16px; height:16px; color:#fbbf24;"></i>
+          </button>
+
           <!-- Firebase Cloud Sync Status Badge -->
           <div id="firebaseSyncBadge" class="firebase-sync-badge status-unconfigured" title="Klik untuk Pengaturan Firebase" onclick="openFirebaseConfigModal()">
             <i data-lucide="cloud" style="width:13px; height:13px;"></i>
@@ -108,10 +113,14 @@
       <!-- TAB 1: TROLI BELANJA (LIVE SHOPPING CART) -->
       <section id="tab-trolley" class="tab-page active">
         <!-- Quick Action & Filter Row -->
-        <div class="quick-action-bar">
-          <button id="addItemBtn" class="btn-primary" style="flex:1;">
+        <div class="quick-action-bar" style="gap:8px;">
+          <button id="addItemBtn" class="btn-primary" style="flex:1.2;">
             <i data-lucide="plus" style="width:18px; height:18px;"></i>
             Tambah Barang Belanja
+          </button>
+          <button id="readdPastItemsBtn" class="btn-secondary" style="flex:1; font-size:0.78rem; padding:10px 8px; border-color:rgba(16,185,129,0.4); background:rgba(16,185,129,0.08); color:var(--text-main);" onclick="openPastItemsModal()">
+            <i data-lucide="history" style="width:16px; height:16px; color:#10b981;"></i>
+            Tambah dari Riwayat
           </button>
         </div>
 
@@ -302,8 +311,13 @@
       <form id="itemForm">
         <!-- Item Name with Autocomplete Dropdown & Native Datalist -->
         <div class="form-group" style="position:relative;">
-          <label class="form-label">Nama Barang / Produk *</label>
-          <input type="text" id="itemNameInput" list="catalogDatalist" class="input-large" placeholder="Ketik nama produk (misal: Beras / Minyak)" required autocomplete="off">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <label class="form-label" style="margin-bottom:0;">Nama Barang / Produk *</label>
+            <span style="font-size:0.7rem; color:var(--primary-emerald); cursor:pointer;" onclick="document.getElementById('itemNameInput').focus(); document.getElementById('itemNameInput').dispatchEvent(new Event('focus'));">
+              👇 Ketuk untuk lihat katalog
+            </span>
+          </div>
+          <input type="text" id="itemNameInput" list="catalogDatalist" class="input-large" placeholder="Ketik atau pilih nama produk (cth: Beras, Susu, Deterjen)" required autocomplete="off">
           <datalist id="catalogDatalist"></datalist>
           <div id="itemNameSuggestions" class="autocomplete-suggestions hidden"></div>
           <div id="priceComparisonHint" style="font-size:0.72rem; margin-top:4px;"></div>
@@ -315,13 +329,14 @@
             <label class="form-label">Kategori</label>
             <select id="itemCategoryInput" class="input-large">
               <option value="Bahan Pokok">Bahan Pokok</option>
-              <option value="Makanan Quick">Makanan Quick / Mie</option>
-              <option value="Lauk & Daging">Lauk & Daging</option>
-              <option value="Bumbu & Bahan">Bumbu & Bahan</option>
-              <option value="Minuman & Nutrisi">Minuman & Nutrisi</option>
-              <option value="Mandi & Mandi">Mandi & Perawatan</option>
-              <option value="Cuci & Kebersihan">Cuci & Kebersihan</option>
-              <option value="Cemilan (Keinginan)">Cemilan / Kopi</option>
+              <option value="Makanan Cepat Saji">Makanan / Mie Instan</option>
+              <option value="Makanan Olahan">Makanan Olahan / Roti / Sosis</option>
+              <option value="Lauk & Segar">Lauk, Daging & Segar</option>
+              <option value="Bumbu & Bahan">Bumbu & Bahan Masak</option>
+              <option value="Minuman">Minuman & Susu / Kopi</option>
+              <option value="Cuci & Kebersihan">Cuci & Deterjen / Sabun Piring</option>
+              <option value="Mandi & Perawatan">Mandi & Perawatan Diri</option>
+              <option value="Cemilan & Snack">Cemilan & Snack (Keinginan)</option>
               <option value="Lain-lain">Lain-lain</option>
             </select>
           </div>
@@ -550,6 +565,22 @@
         </div>
       </div>
 
+      <!-- Google / Gmail Login Button -->
+      <div style="margin-bottom:14px;">
+        <button type="button" class="btn-gmail-login" onclick="handleGoogleLogin()">
+          <svg style="width:18px; height:18px;" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"/>
+            <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.14-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+          </svg>
+          <span>Masuk Cepat dengan Akun Gmail</span>
+        </button>
+        <div class="auth-divider">
+          <span>atau masuk via email & password</span>
+        </div>
+      </div>
+
       <!-- Tabs: Masuk / Daftar -->
       <div class="auth-tabs-row">
         <button id="tabBtnLogin" class="auth-tab-btn active" onclick="switchAuthTab('login')">Masuk (Login)</button>
@@ -596,7 +627,14 @@
           </div>
           <div>
             <label class="form-label">Supermarket Favorit</label>
-            <input type="text" id="regStoreInput" class="input-large" value="Super Indo">
+            <select id="regStoreInput" class="input-large">
+              <option value="Hari-Hari Pasar Swalayan">Hari-Hari Pasar Swalayan</option>
+              <option value="Hypermart">Hypermart</option>
+              <option value="Super Indo">Super Indo</option>
+              <option value="Grand Lucky">Grand Lucky</option>
+              <option value="Lotte Mart">Lotte Mart</option>
+              <option value="Indomaret Fresh">Indomaret Fresh</option>
+            </select>
           </div>
         </div>
         <button type="submit" class="btn-primary" style="width:100%; padding:14px; margin-top:8px;">
@@ -641,14 +679,56 @@
       </div>
 
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-        <button type="button" class="btn-secondary" onclick="openAuthModal('register')">
-          <i data-lucide="user-plus" style="width:14px; height:14px;"></i>
-          Tambah Akun
+        <button type="button" class="btn-secondary" onclick="openAuthModal('login')">
+          <i data-lucide="log-in" style="width:14px; height:14px;"></i>
+          Ganti Akun / Gmail
         </button>
         <button type="button" class="btn-secondary" style="color:#f87171; border-color:rgba(239,68,68,0.3);" onclick="handleUserLogout()">
           <i data-lucide="log-out" style="width:14px; height:14px;"></i>
           Keluar (Logout)
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: PILIH SUPERMARKET / TOKO -->
+  <div id="storeModal" class="modal-overlay">
+    <div class="bottom-sheet" style="max-height:85vh;">
+      <div class="sheet-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <i data-lucide="map-pin" style="color:#10b981; width:20px; height:20px;"></i>
+          <h3 class="sheet-title">Pilih Lokasi Supermarket</h3>
+        </div>
+        <button class="icon-btn-ghost" style="border:none;" onclick="closeStoreModal()">
+          <i data-lucide="x" style="width:20px; height:20px;"></i>
+        </button>
+      </div>
+      <div style="margin-bottom:12px; font-size:0.75rem; color:var(--text-sub);">
+        Pilih tempat belanja Anda hari ini untuk mencocokkan acuan harga dan riwayat struk:
+      </div>
+      <div id="storeListContainer" class="store-grid-list">
+        <!-- Dynamic store list items -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: TAMBAH BARANG DARI RIWAYAT STRUK -->
+  <div id="pastItemsModal" class="modal-overlay">
+    <div class="bottom-sheet" style="max-height:90vh;">
+      <div class="sheet-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <i data-lucide="history" style="color:#10b981; width:20px; height:20px;"></i>
+          <div>
+            <h3 class="sheet-title">Tambah Barang dari Riwayat</h3>
+            <p style="font-size:0.7rem; color:var(--text-sub); margin-top:2px;">Beli lagi barang yang pernah dicheckout sebelumnya</p>
+          </div>
+        </div>
+        <button class="icon-btn-ghost" style="border:none;" onclick="closePastItemsModal()">
+          <i data-lucide="x" style="width:20px; height:20px;"></i>
+        </button>
+      </div>
+      <div id="pastItemsListContainer" style="max-height:60vh; overflow-y:auto; margin-top:10px;">
+        <!-- Dynamic past checkout items -->
       </div>
     </div>
   </div>
