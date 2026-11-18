@@ -60,9 +60,9 @@
             <i data-lucide="chevron-down" style="width:12px; height:12px; opacity:0.7;"></i>
           </div>
 
-          <div id="storeBadge" class="store-selector-badge">
+          <div id="storeBadge" class="store-selector-badge" onclick="openStoreModal()">
             <i data-lucide="map-pin" style="width:13px; height:13px; color:#10b981;"></i>
-            <span id="storeBadgeText">Super Indo</span>
+            <span id="storeBadgeText">Hari-Hari Pasar Swalayan</span>
           </div>
 
           <!-- Theme Toggle Button (Light / Dark Mode) -->
@@ -686,6 +686,13 @@
         <button type="button" class="btn-secondary" style="color:#f87171; border-color:rgba(239,68,68,0.3);" onclick="handleUserLogout()">
           <i data-lucide="log-out" style="width:14px; height:14px;"></i>
           Keluar (Logout)
+        </button>
+      </div>
+
+      <div style="margin-top:12px;">
+        <button type="button" class="btn-secondary" style="width:100%; font-size:0.75rem; padding:8px;" onclick="closeAccountModal(); openStoreModal();">
+          <i data-lucide="map-pin" style="width:14px; height:14px; color:#10b981;"></i>
+          Ganti Lokasi Toko Belanja (Hari-Hari / Hypermart)
         </button>
       </div>
     </div>

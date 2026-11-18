@@ -359,7 +359,19 @@ function setupModalEvents() {
   // Store selector click
   const storeBadge = document.getElementById('storeBadge');
   if (storeBadge) {
-    storeBadge.addEventListener('click', () => openStoreSettingModal());
+    storeBadge.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openStoreModal();
+    });
+  }
+
+  // Theme toggle button click
+  const themeToggleBtn = document.getElementById('themeToggleBtn');
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleThemeMode();
+    });
   }
 
   // Saring Keinginan button
@@ -1472,12 +1484,10 @@ function switchAccount(userId) {
 }
 
 async function handleUserLogout() {
-  if (confirm('Apakah Anda yakin ingin keluar dari akun ini?')) {
-    await window.auth.logout();
-    closeAccountModal();
-    openAuthModal('login');
-    showToast('Anda telah keluar dari akun.');
-  }
+  await window.auth.logout();
+  closeAccountModal();
+  openAuthModal('login');
+  showToast('Anda telah berhasil keluar dari akun.');
 }
 
 /* -------------------------------------------------------------------------- */

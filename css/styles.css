@@ -51,7 +51,7 @@ body.light-theme {
   --border-highlight: rgba(16, 185, 129, 0.5);
 
   --shadow-main: 0 10px 30px -5px rgba(0, 0, 0, 0.1);
-  background: radial-gradient(circle at 50% 20%, #e2e8f0 0%, #cbd5e1 100%);
+  background: radial-gradient(circle at 50% 20%, #e2e8f0 0%, #cbd5e1 100%) !important;
 }
 
 body.light-theme .app-wrapper {
@@ -961,36 +961,36 @@ body {
 
 /* Modals & Slide-up Bottom Sheets */
 .modal-overlay {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(6px);
-  z-index: 100;
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 999;
   display: none;
   align-items: flex-end;
   justify-content: center;
   animation: fadeIn 0.2s ease-out;
-  border-radius: 44px;
-  overflow: hidden;
 }
 
 .modal-overlay.active {
-  display: flex;
+  display: flex !important;
 }
 
 .bottom-sheet {
   background: var(--bg-card);
   width: 100%;
-  max-width: 100%;
+  max-width: 430px;
   max-height: 85vh;
   border-radius: 24px 24px 0 0;
   border: 1px solid var(--border-color);
   padding: 20px;
   overflow-y: auto;
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.6);
 }
 
 @keyframes slideUp {
@@ -1320,10 +1320,6 @@ body {
 
   .app-wrapper::before {
     display: none;
-  }
-
-  .modal-overlay {
-    border-radius: 0;
   }
 }
 
