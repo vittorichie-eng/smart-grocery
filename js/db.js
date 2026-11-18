@@ -110,9 +110,7 @@ class StorageManager {
   }
 
   triggerCloudSync() {
-    if (window.firebaseSync && typeof window.firebaseSync.queueSync === 'function') {
-      window.firebaseSync.queueSync();
-    }
+    // Cloud sync optional
   }
 
   // --- CONFIG METHODS ---

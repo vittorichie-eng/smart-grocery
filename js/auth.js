@@ -69,32 +69,6 @@ class AuthManager {
       this.currentUser = users[0];
       localStorage.setItem(AUTH_STORAGE_KEYS.CURRENT_USER, JSON.stringify(this.currentUser));
     }
-
-    // Setup Firebase Auth state listener if Firebase is configured
-    if (window.firebase && window.firebase.auth) {
-      try {
-        window.firebase.auth().onAuthStateChanged((fbUser) => {
-          if (fbUser) {
-            console.log('[Auth] Firebase Auth state changed: Logged in as', fbUser.email);
-            // Sync with local session
-            if (!this.currentUser || this.currentUser.email !== fbUser.email) {
-              const localUser = {
-                id: fbUser.uid,
-                name: fbUser.displayName || fbUser.email.split('@')[0],
-                email: fbUser.email,
-                avatar: '👤',
-                role: 'Firebase User',
-                monthlyBudget: 750000,
-                store: 'Super Indo'
-              };
-              this.setCurrentUser(localUser);
-            }
-          }
-        });
-      } catch (err) {
-        console.warn('[Auth] Firebase Auth listener error:', err);
-      }
-    }
   }
 
   onAuthChange(callback) {
@@ -148,22 +122,6 @@ class AuthManager {
     }
 
     let uid = 'user-' + Date.now();
-    let fbSuccess = false;
-
-    // If Firebase Auth is ready and configured, create user on Firebase
-    if (window.firebaseSync && window.firebaseSync.isConfigured() && window.firebase && window.firebase.auth) {
-      try {
-        const cred = await window.firebase.auth().createUserWithEmailAndPassword(cleanEmail, cleanPassword);
-        if (cred && cred.user) {
-          uid = cred.user.uid;
-          await cred.user.updateProfile({ displayName: cleanName });
-          fbSuccess = true;
-          console.log('[Auth] User registered on Firebase Auth:', uid);
-        }
-      } catch (fbErr) {
-        console.warn('[Auth] Firebase signup error, continuing with local account:', fbErr.message);
-      }
-    }
 
     const newUser = {
       id: uid,
@@ -173,9 +131,8 @@ class AuthManager {
       avatar: this.generateAvatarEmoji(cleanName),
       role: role || 'Member Belanja',
       monthlyBudget: parseFloat(monthlyBudget) || 750000,
-      store: store || 'Super Indo',
-      createdAt: new Date().toISOString(),
-      isFirebaseUser: fbSuccess
+      store: store || 'Hari-Hari Pasar Swalayan',
+      createdAt: new Date().toISOString()
     };
 
     users.push(newUser);
@@ -190,10 +147,6 @@ class AuthManager {
         monthlyBudget: newUser.monthlyBudget,
         currentStore: newUser.store
       });
-      // Trigger cloud sync for this new user
-      if (window.firebaseSync && window.firebaseSync.isConfigured()) {
-        window.firebaseSync.pushCurrentLocalToCloud();
-      }
     }
 
     return newUser;
@@ -210,33 +163,7 @@ class AuthManager {
       throw new Error('Email dan Password wajib diisi.');
     }
 
-    // Try Firebase Auth if configured
-    if (window.firebaseSync && window.firebaseSync.isConfigured() && window.firebase && window.firebase.auth) {
-      try {
-        const cred = await window.firebase.auth().signInWithEmailAndPassword(cleanEmail, cleanPassword);
-        if (cred && cred.user) {
-          const user = {
-            id: cred.user.uid,
-            name: cred.user.displayName || cleanEmail.split('@')[0],
-            email: cred.user.email,
-            avatar: '👤',
-            role: 'Firebase User',
-            monthlyBudget: 750000,
-            store: 'Super Indo'
-          };
-          this.setCurrentUser(user);
-          // Pull this user's data from Cloud Firestore
-          if (window.firebaseSync) {
-            window.firebaseSync.setupRealtimeListener();
-          }
-          return user;
-        }
-      } catch (fbErr) {
-        console.warn('[Auth] Firebase login error, checking local registered users:', fbErr.message);
-      }
-    }
-
-    // Local fallback authentication
+    // Local authentication
     const users = this.getRegisteredUsers();
     const matched = users.find(u => u.email.toLowerCase() === cleanEmail);
 
@@ -249,12 +176,6 @@ class AuthManager {
     }
 
     this.setCurrentUser(matched);
-
-    // Sync with Firestore if configured
-    if (window.firebaseSync && window.firebaseSync.isConfigured()) {
-      window.firebaseSync.setupRealtimeListener();
-    }
-
     return matched;
   }
 
@@ -266,9 +187,6 @@ class AuthManager {
     const target = users.find(u => u.id === userId);
     if (target) {
       this.setCurrentUser(target);
-      if (window.firebaseSync && window.firebaseSync.isConfigured()) {
-        window.firebaseSync.setupRealtimeListener();
-      }
       return target;
     }
     return null;
@@ -285,13 +203,6 @@ class AuthManager {
    * Log out active user
    */
   async logout() {
-    if (window.firebase && window.firebase.auth) {
-      try {
-        await window.firebase.auth().signOut();
-      } catch (e) {
-        console.warn('[Auth] Error signing out from Firebase:', e);
-      }
-    }
     this.setCurrentUser(null);
   }
 
@@ -299,44 +210,7 @@ class AuthManager {
    * Log in using Google / Gmail Account
    */
   async loginWithGoogle() {
-    // 1. Try Firebase Google Auth Provider if Firebase is configured
-    if (window.firebase && window.firebase.auth && window.firebaseSync && window.firebaseSync.isConfigured()) {
-      try {
-        const provider = new window.firebase.auth.GoogleAuthProvider();
-        const result = await window.firebase.auth().signInWithPopup(provider);
-        if (result && result.user) {
-          const fbUser = result.user;
-          const googleUser = {
-            id: fbUser.uid,
-            name: fbUser.displayName || fbUser.email.split('@')[0],
-            email: fbUser.email,
-            avatar: fbUser.photoURL || '🌐',
-            role: 'Google Account',
-            monthlyBudget: 750000,
-            store: 'Hari-Hari Pasar Swalayan',
-            isGoogleUser: true
-          };
-
-          // Save to registered users if not exists
-          const users = this.getRegisteredUsers();
-          const existingIdx = users.findIndex(u => u.email.toLowerCase() === googleUser.email.toLowerCase());
-          if (existingIdx !== -1) {
-            users[existingIdx] = { ...users[existingIdx], ...googleUser };
-          } else {
-            users.push(googleUser);
-          }
-          localStorage.setItem(AUTH_STORAGE_KEYS.ALL_USERS, JSON.stringify(users));
-
-          this.setCurrentUser(googleUser);
-          if (window.firebaseSync) window.firebaseSync.setupRealtimeListener();
-          return googleUser;
-        }
-      } catch (fbErr) {
-        console.warn('[Auth] Firebase Google login failed or popup closed, proceeding to Gmail prompt:', fbErr.message);
-      }
-    }
-
-    // 2. Direct Gmail Account Login / Connect Prompt
+    // Direct Gmail Account Login / Connect Prompt
     const enteredEmail = prompt('Masukkan Alamat Email Gmail Anda (@gmail.com):', 'user.grocery@gmail.com');
     if (!enteredEmail || !enteredEmail.trim()) {
       throw new Error('Login Gmail dibatalkan.');

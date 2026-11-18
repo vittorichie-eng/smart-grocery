@@ -31,9 +31,6 @@ function initApp() {
   // Check for PWA install button status
   setupPWAEvents();
 
-  // Setup Firebase Cloud Firestore Sync (Single User)
-  setupFirebaseSync();
-
   // Setup Multi-User Authentication System
   setupAuthSystem();
 }
@@ -1283,10 +1280,6 @@ function setupAuthSystem() {
     if (user) {
       // Re-render current active view to reflect this user's data
       renderActiveView(currentTab);
-      // Re-bind Firestore realtime listener for this user
-      if (window.firebaseSync && window.firebaseSync.isConfigured()) {
-        window.firebaseSync.setupRealtimeListener();
-      }
     } else {
       openAuthModal('login');
     }

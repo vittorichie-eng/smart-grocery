@@ -1,10 +1,9 @@
-const CACHE_NAME = 'smart-grocery-v5';
+const CACHE_NAME = 'smart-grocery-v6';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './css/styles.css',
   './js/app.js',
-  './js/firebase-config.js',
   './js/auth.js',
   './js/db.js',
   './js/comparator.js',
@@ -16,9 +15,6 @@ const ASSETS_TO_CACHE = [
   'https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js',
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
   'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js',
-  'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js',
-  'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js',
-  'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js',
   'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap'
 ];
 
